@@ -96,10 +96,11 @@ export default function Step3ConditionPricing({ form }: Props) {
         <label className={labelClass}>Maintenance status *</label>
         <select {...register("maintenance_status")} className={inputClass}>
           <option value="">Select status…</option>
-          <option value="annual_current">Annual inspection current</option>
+          <option value="annual_current">Annual current</option>
+          <option value="inspection_due_3mo">Inspection due within 3 months</option>
           <option value="inspection_due_6mo">Inspection due within 6 months</option>
           <option value="needs_inspection">Needs inspection</option>
-          <option value="fresh_annual">Fresh annual — just completed</option>
+          <option value="fresh_overhaul">Just completed major overhaul</option>
         </select>
         {errors.maintenance_status && (
           <p className="text-red-600 text-xs mt-1">{errors.maintenance_status.message}</p>
@@ -157,7 +158,10 @@ export default function Step3ConditionPricing({ form }: Props) {
 
         {!priceOnRequest && (
           <div className="flex gap-3">
-            <select {...register("currency")} className={inputClass + " w-28 flex-shrink-0"}>
+            <select
+              {...register("currency")}
+              className="w-[100px] flex-shrink-0 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-[#0F172A] bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
+            >
               <option value="USD">USD $</option>
               <option value="BRL">BRL R$</option>
               <option value="EUR">EUR €</option>
@@ -167,7 +171,7 @@ export default function Step3ConditionPricing({ form }: Props) {
               min={0}
               placeholder="0"
               {...register("asking_price")}
-              className={inputClass}
+              className={inputClass + " flex-1"}
             />
           </div>
         )}

@@ -20,10 +20,11 @@ const CONDITION_LABEL: Record<number, string> = {
   6: "Very Good", 7: "Above Average", 8: "Excellent", 9: "Show Quality", 10: "Like New",
 };
 const MAINTENANCE_LABEL: Record<string, string> = {
-  annual_current: "Annual inspection current",
+  annual_current: "Annual current",
+  inspection_due_3mo: "Due within 3 months",
   inspection_due_6mo: "Due within 6 months",
   needs_inspection: "Needs inspection",
-  fresh_annual: "Fresh annual",
+  fresh_overhaul: "Just completed major overhaul",
 };
 const ENGINE_PROGRAM_LABEL = { enrolled: "Enrolled", not_enrolled: "Not enrolled", na: "N/A" };
 const CURRENCY_SYMBOL = { USD: "$", BRL: "R$", EUR: "€" };

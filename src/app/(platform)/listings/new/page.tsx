@@ -95,7 +95,8 @@ export default function NewListingPage() {
       .from("manufacturers")
       .select("*")
       .order("name")
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) console.error("[wizard] manufacturers fetch error:", error);
         if (data) setManufacturers(data as unknown as Manufacturer[]);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -112,7 +113,8 @@ export default function NewListingPage() {
       .select("*")
       .eq("manufacturer_id", watchedManufacturerId)
       .order("name")
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) console.error("[wizard] aircraft_models fetch error:", error);
         if (data) setModels(data as unknown as AircraftModel[]);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -151,6 +153,12 @@ export default function NewListingPage() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated — please sign in again.");
+
+      // Ensure profile row exists (handles users created before the trigger was added)
+      const { error: profileErr } = await supabase
+        .from("profiles")
+        .upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
+      if (profileErr) console.error("[wizard] profile upsert error:", profileErr);
 
       // Resolve or create model
       let modelId = values.aircraft_model_id;
@@ -241,6 +249,7 @@ export default function NewListingPage() {
 
       router.push(`/dashboard?created=1`);
     } catch (err) {
+      console.error("[wizard] publish error:", err);
       setSubmitError(err instanceof Error ? err.message : "An unexpected error occurred.");
     } finally {
       setIsSubmitting(false);
