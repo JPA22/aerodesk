@@ -149,18 +149,33 @@ export default function NewListingPage() {
     setIsSubmitting(true);
     setSubmitError(null);
 
+    // Safety net: force-stop the spinner after 15s so it never freezes
+    const timeoutId = setTimeout(() => {
+      setIsSubmitting(false);
+      setSubmitError("Request timed out after 15 seconds. Check your connection and try again.");
+    }, 15_000);
+
     try {
       const values = form.getValues();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated — please sign in again.");
+
+      // Safe auth check (avoids crash if data is unexpectedly null)
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData?.user) {
+        throw new Error("Not authenticated — please sign in again.");
+      }
+      const user = authData.user;
 
       // Ensure profile row exists (handles users created before the trigger was added)
       const { error: profileErr } = await supabase
         .from("profiles")
         .upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
-      if (profileErr) console.error("[wizard] profile upsert error:", profileErr);
+      if (profileErr) {
+        console.error("[wizard] profile upsert error:", profileErr);
+        // Non-fatal if profile already exists; only throw if it's a real error
+        if (profileErr.code !== "23505") {
+          throw new Error(`Profile error (${profileErr.code}): ${profileErr.message}`);
+        }
+      }
 
       // Resolve or create model
       let modelId = values.aircraft_model_id;
@@ -174,7 +189,7 @@ export default function NewListingPage() {
           })
           .select("id")
           .single();
-        if (modelErr) throw new Error("Could not create model: " + modelErr.message);
+        if (modelErr) throw new Error(`Could not create model (${modelErr.code}): ${modelErr.message}`);
         modelId = (newModel as unknown as { id: string })?.id;
       }
       if (!modelId) throw new Error("Please select a model or enter a custom model name.");
@@ -216,8 +231,12 @@ export default function NewListingPage() {
         .select("id")
         .single();
 
-      if (listingErr || !listing)
-        throw new Error(listingErr?.message ?? "Failed to create listing.");
+      if (listingErr || !listing) {
+        const msg = listingErr
+          ? `DB error (${listingErr.code}): ${listingErr.message}${listingErr.details ? ` — ${listingErr.details}` : ""}`
+          : "Failed to create listing.";
+        throw new Error(msg);
+      }
 
       const listingId = (listing as unknown as { id: string }).id;
 
@@ -232,11 +251,10 @@ export default function NewListingPage() {
           .from("listing-images")
           .upload(path, img.file, { contentType: img.file.type });
 
-        if (!uploadErr) {
-          const {
-            data: { publicUrl },
-          } = supabase.storage.from("listing-images").getPublicUrl(path);
-
+        if (uploadErr) {
+          console.error("[wizard] image upload error:", uploadErr);
+        } else {
+          const { data: { publicUrl } } = supabase.storage.from("listing-images").getPublicUrl(path);
           await supabase.from("listing_images").insert({
             listing_id: listingId,
             image_url: publicUrl,
@@ -247,15 +265,15 @@ export default function NewListingPage() {
       }
 
       // Clear saved draft
-      try {
-        localStorage.removeItem(WIZARD_STORAGE_KEY);
-      } catch {}
+      try { localStorage.removeItem(WIZARD_STORAGE_KEY); } catch {}
 
+      clearTimeout(timeoutId);
       router.push(`/dashboard?created=1`);
     } catch (err) {
       console.error("[wizard] publish error:", err);
       setSubmitError(err instanceof Error ? err.message : "An unexpected error occurred.");
     } finally {
+      clearTimeout(timeoutId);
       setIsSubmitting(false);
     }
   };
