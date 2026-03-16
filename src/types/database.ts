@@ -214,6 +214,8 @@ export type Database = {
           engine_program: EngineProgramStatus;
           maintenance_status: string | null;
           condition_rating: number | null;
+          passenger_seats: number | null;
+          galley_config: string | null;
           status: ListingStatus;
           featured: boolean;
           views_count: number;
@@ -243,6 +245,8 @@ export type Database = {
           engine_program?: EngineProgramStatus;
           maintenance_status?: string | null;
           condition_rating?: number | null;
+          passenger_seats?: number | null;
+          galley_config?: string | null;
           status?: ListingStatus;
           featured?: boolean;
           views_count?: number;
@@ -272,6 +276,8 @@ export type Database = {
           engine_program?: EngineProgramStatus;
           maintenance_status?: string | null;
           condition_rating?: number | null;
+          passenger_seats?: number | null;
+          galley_config?: string | null;
           status?: ListingStatus;
           featured?: boolean;
           views_count?: number;

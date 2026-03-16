@@ -78,6 +78,7 @@ export default function NewListingPage() {
   });
 
   const watchedManufacturerId = form.watch("manufacturer_id");
+  const watchedCategory = form.watch("category");
 
   // Persist form state to localStorage on every change
   useEffect(() => {
@@ -102,9 +103,9 @@ export default function NewListingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fetch models when manufacturer changes
+  // Fetch models when manufacturer OR category changes — filter by both
   useEffect(() => {
-    if (!watchedManufacturerId) {
+    if (!watchedManufacturerId || !watchedCategory) {
       setModels([]);
       return;
     }
@@ -112,13 +113,14 @@ export default function NewListingPage() {
       .from("aircraft_models")
       .select("*")
       .eq("manufacturer_id", watchedManufacturerId)
+      .eq("category", watchedCategory)
       .order("name")
       .then(({ data, error }) => {
         if (error) console.error("[wizard] aircraft_models fetch error:", error);
         if (data) setModels(data as unknown as AircraftModel[]);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchedManufacturerId]);
+  }, [watchedManufacturerId, watchedCategory]);
 
   // ── Navigation ──────────────────────────────────────────────────────────────
 
@@ -200,6 +202,8 @@ export default function NewListingPage() {
           avionics_description: values.avionics_description ?? null,
           condition_rating: values.condition_rating,
           maintenance_status: values.maintenance_status,
+          passenger_seats: values.passenger_seats ? Number(values.passenger_seats) : null,
+          galley_config: values.galley_config || null,
           asking_price: values.price_on_request ? 0 : Number(values.asking_price ?? 0),
           currency: values.currency,
           location_country: values.location_country,

@@ -37,6 +37,13 @@ const CONDITION_COLOR: Record<number, string> = {
   10: "#2563EB",
 };
 
+function formatPriceDisplay(raw: string): string {
+  if (!raw) return "";
+  const [intPart, decPart] = raw.split(".");
+  const formatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return decPart !== undefined ? `${formatted}.${decPart}` : formatted;
+}
+
 export default function Step3ConditionPricing({ form }: Props) {
   const { register, watch, setValue, formState: { errors } } = form;
 
@@ -167,10 +174,19 @@ export default function Step3ConditionPricing({ form }: Props) {
               <option value="EUR">EUR €</option>
             </select>
             <input
-              type="number"
-              min={0}
-              placeholder="0"
-              {...register("asking_price")}
+              type="text"
+              inputMode="decimal"
+              placeholder="e.g. 8,950,000"
+              value={formatPriceDisplay(watch("asking_price") ?? "")}
+              onChange={(e) => {
+                // Strip everything except digits and a single decimal point
+                const raw = e.target.value.replace(/[^0-9.]/g, "");
+                const parts = raw.split(".");
+                const clean = parts.length > 2
+                  ? parts[0] + "." + parts.slice(1).join("")
+                  : raw;
+                setValue("asking_price", clean);
+              }}
               className={inputClass + " flex-1"}
             />
           </div>

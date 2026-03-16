@@ -22,6 +22,8 @@ export const wizardSchema = z.object({
   engine_time_smoh: z.string().optional(),
   engine_program: z.enum(["enrolled", "not_enrolled", "na"] as const),
   avionics_description: z.string().optional(),
+  passenger_seats: z.string().optional(),
+  galley_config: z.string().optional(),
 
   // Step 3 — Condition & Pricing
   condition_rating: z.number().int().min(1).max(10),

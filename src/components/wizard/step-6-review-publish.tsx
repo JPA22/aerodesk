@@ -114,6 +114,10 @@ export default function Step6ReviewPublish({
         <Row label="Engine SMOH" value={values.engine_time_smoh ? `${values.engine_time_smoh} hrs` : undefined} />
         <Row label="Engine program" value={ENGINE_PROGRAM_LABEL[values.engine_program ?? "na"]} />
         <Row label="Avionics" value={values.avionics_description} />
+        <Row label="Passenger seats" value={values.passenger_seats} />
+        <Row label="Galley" value={values.galley_config
+          ? ({ none: "No galley", forward: "Forward galley", aft: "Aft galley", both: "Both (forward & aft)" } as Record<string, string>)[values.galley_config]
+          : undefined} />
       </Section>
 
       {/* Step 3 */}

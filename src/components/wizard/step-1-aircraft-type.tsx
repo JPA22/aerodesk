@@ -117,7 +117,6 @@ export default function Step1AircraftType({ form, manufacturers, models }: Props
                 {models.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.name}
-                    {m.typical_seats ? ` — ${m.typical_seats} seats` : ""}
                   </option>
                 ))}
               </select>

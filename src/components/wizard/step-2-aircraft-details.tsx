@@ -121,6 +121,31 @@ export default function Step2AircraftDetails({ form }: Props) {
           List the major avionics and navigation equipment installed.
         </p>
       </div>
+
+      {/* Passenger seats + Galley */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelClass}>Passenger seats</label>
+          <input
+            type="number"
+            min={1}
+            max={100}
+            placeholder="e.g. 9"
+            {...register("passenger_seats")}
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Galley configuration</label>
+          <select {...register("galley_config")} className={inputClass}>
+            <option value="">Not specified</option>
+            <option value="none">No galley</option>
+            <option value="forward">Forward galley</option>
+            <option value="aft">Aft galley</option>
+            <option value="both">Both (forward &amp; aft)</option>
+          </select>
+        </div>
+      </div>
     </div>
   );
 }
