@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Loader2, CheckCircle, Mail, Phone, MessageCircle } from "lucide-react";
+import { X, Loader2, Mail, Phone, MessageCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
 
@@ -10,6 +10,7 @@ interface Props {
   listingTitle: string;
   sellerPhone?: string | null;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
 const CONTACT_METHODS = [
@@ -18,7 +19,7 @@ const CONTACT_METHODS = [
   { value: "whatsapp", label: "WhatsApp", Icon: MessageCircle },
 ] as const;
 
-export default function ContactModal({ listingId, listingTitle, onClose }: Props) {
+export default function ContactModal({ listingId, listingTitle, onClose, onSuccess }: Props) {
   const { user, profile } = useAuth();
   const supabase = createClient();
 
@@ -27,7 +28,6 @@ export default function ContactModal({ listingId, listingTitle, onClose }: Props
   );
   const [contactMethod, setContactMethod] = useState<"email" | "phone" | "whatsapp">("email");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,6 +35,9 @@ export default function ContactModal({ listingId, listingTitle, onClose }: Props
     if (!user) return;
     setIsSubmitting(true);
     setError(null);
+
+    // Ensure profile row exists (FK requirement on leads.buyer_id)
+    await supabase.from("profiles").upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
 
     const { error: leadErr } = await supabase.from("leads").insert({
       listing_id: listingId,
@@ -46,9 +49,10 @@ export default function ContactModal({ listingId, listingTitle, onClose }: Props
 
     setIsSubmitting(false);
     if (leadErr) {
-      setError(leadErr.message);
+      setError(leadErr.message || "Failed to send inquiry. Please try again.");
     } else {
-      setSuccess(true);
+      onSuccess?.();
+      onClose();
     }
   };
 
@@ -75,21 +79,7 @@ export default function ContactModal({ listingId, listingTitle, onClose }: Props
 
         {/* Body */}
         <div className="px-6 py-5">
-          {success ? (
-            <div className="text-center py-8">
-              <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-[#0F172A] mb-2">Inquiry sent!</h3>
-              <p className="text-[#64748B] text-sm">
-                The seller will get back to you shortly via {contactMethod}.
-              </p>
-              <button
-                onClick={onClose}
-                className="mt-6 bg-[#2563EB] text-white font-semibold px-6 py-2.5 rounded-xl hover:bg-[#3B82F6] transition-colors text-sm"
-              >
-                Done
-              </button>
-            </div>
-          ) : !user ? (
+          {!user ? (
             <div className="text-center py-6">
               <p className="text-[#64748B] mb-4">Sign in to contact the seller.</p>
               <a

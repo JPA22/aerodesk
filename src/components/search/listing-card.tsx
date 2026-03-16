@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { MapPin, Clock, Heart, Star } from "lucide-react";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
@@ -63,6 +64,7 @@ export default function ListingCard({
   onSaveChange?: (id: string, saved: boolean) => void;
 }) {
   const { user } = useAuth();
+  const router = useRouter();
   const supabase = createClient();
   const [saving, setSaving] = useState(false);
   const isSaved = savedIds.has(listing.id);
@@ -83,7 +85,11 @@ export default function ListingCard({
 
   const handleSave = async (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!user || saving) return;
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    if (saving) return;
     setSaving(true);
     try {
       if (isSaved) {
@@ -128,19 +134,17 @@ export default function ListingCard({
             </span>
           )}
           {/* Save button */}
-          {user && (
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="absolute top-2.5 right-2.5 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm hover:bg-white transition-colors"
-              title={isSaved ? "Remove from saved" : "Save listing"}
-            >
-              <Heart
-                size={15}
-                className={isSaved ? "fill-red-500 text-red-500" : "text-slate-400"}
-              />
-            </button>
-          )}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="absolute top-2.5 right-2.5 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm hover:bg-white transition-colors"
+            title={isSaved ? "Remove from saved" : "Save listing"}
+          >
+            <Heart
+              size={15}
+              className={isSaved ? "fill-red-500 text-red-500" : "text-slate-400"}
+            />
+          </button>
         </div>
 
         {/* Body */}

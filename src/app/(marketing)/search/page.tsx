@@ -66,13 +66,7 @@ function DualSlider({
             const v = Math.min(Number(e.target.value), hi - step);
             onChange([v, hi]);
           }}
-          className="absolute w-full appearance-none bg-transparent pointer-events-none
-            [&::-webkit-slider-thumb]:pointer-events-auto
-            [&::-webkit-slider-thumb]:appearance-none
-            [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
-            [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white
-            [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[#2563EB]
-            [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-sm"
+          className="range-airplane absolute w-full"
           style={{ zIndex: lo > max * 0.9 ? 5 : 3 }}
         />
         <input
@@ -81,13 +75,7 @@ function DualSlider({
             const v = Math.max(Number(e.target.value), lo + step);
             onChange([lo, v]);
           }}
-          className="absolute w-full appearance-none bg-transparent pointer-events-none
-            [&::-webkit-slider-thumb]:pointer-events-auto
-            [&::-webkit-slider-thumb]:appearance-none
-            [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
-            [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white
-            [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[#2563EB]
-            [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-sm"
+          className="range-airplane absolute w-full"
           style={{ zIndex: 4 }}
         />
       </div>

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   MapPin, Clock, Gauge, Shield, Users, ChevronLeft,
-  ChevronRight, X, Heart, Share2, MessageCircle, Phone,
+  ChevronRight, X, Heart, Share2, MessageCircle, CheckCircle,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -231,10 +232,17 @@ export default function ListingDetailClient({
   similar: ListingCardData[];
 }) {
   const { user } = useAuth();
+  const router = useRouter();
   const supabase = createClient();
   const [contactOpen, setContactOpen] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3500);
+  };
 
   const model = listing.aircraft_models;
   const sym = CURRENCY_SYMBOL[listing.currency] ?? "$";
@@ -261,7 +269,10 @@ export default function ListingDetailClient({
   }, [user, listing.id]);
 
   const toggleSave = async () => {
-    if (!user) return;
+    if (!user) {
+      router.push("/login");
+      return;
+    }
     if (isSaved) {
       await supabase
         .from("saved_listings")
@@ -285,6 +296,14 @@ export default function ListingDetailClient({
 
   return (
     <div className="min-h-screen bg-[#F1F5F9]">
+      {/* Success toast */}
+      {toast && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[70] bg-green-600 text-white font-semibold px-5 py-3 rounded-xl shadow-xl flex items-center gap-2 text-sm whitespace-nowrap">
+          <CheckCircle size={16} />
+          {toast}
+        </div>
+      )}
+
       {/* Increment view count silently */}
       <ViewCounter listingId={listing.id} />
 
@@ -463,13 +482,13 @@ export default function ListingDetailClient({
                 <button
                   onClick={() => {
                     const msg = encodeURIComponent(
-                      `Hi, I found this aircraft on AeroDesk and I'm interested: ${listing.title} — ${window.location.href}`
+                      `Hi, I'm interested in the ${listing.year} ${model.manufacturers.name} ${model.name}. Could you please provide more details? Listing: ${window.location.href}`
                     );
-                    window.open(`https://wa.me/?text=${msg}`, "_blank");
+                    window.open(`https://wa.me/5511918557770?text=${msg}`, "_blank");
                   }}
-                  className="w-full bg-[#25D366] hover:bg-[#20BA5A] text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                  className="w-full bg-[#25D366] hover:bg-[#1EBF5A] text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
                 >
-                  <Phone size={18} />
+                  <MessageCircle size={18} />
                   WhatsApp
                 </button>
 
@@ -551,6 +570,7 @@ export default function ListingDetailClient({
           listingId={listing.id}
           listingTitle={listing.title}
           onClose={() => setContactOpen(false)}
+          onSuccess={() => showToast("Inquiry sent! The seller will contact you soon.")}
         />
       )}
     </div>
