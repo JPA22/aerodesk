@@ -398,18 +398,32 @@ function SearchContent() {
     [searchParams, supabase]
   );
 
-  // Fetch on param change
+  // Fetch on param change — use AbortController to cancel in-flight requests
+  // when searchParams change rapidly (fixes "Lock broken" AbortError race condition)
   useEffect(() => {
+    const controller = new AbortController();
     setLoading(true);
     setPage(0);
-    buildQuery(0, true).then(({ data, count, error }) => {
-      if (error) {
-        console.error("[search] fetch error:", error.message, "| code:", error.code, "| details:", error.details, "| hint:", error.hint);
+
+    const run = async () => {
+      try {
+        const { data, count, error } = await buildQuery(0, true).abortSignal(controller.signal);
+        if (controller.signal.aborted) return;
+        if (error) {
+          console.error("[search] fetch error:", error.message, "| code:", error.code, "| details:", error.details, "| hint:", error.hint);
+        }
+        setListings((data as unknown as ListingCardData[]) ?? []);
+        setTotal(count ?? 0);
+        setLoading(false);
+      } catch (err: unknown) {
+        if (controller.signal.aborted) return; // expected — previous request cancelled
+        console.error("[search] unexpected error:", err);
+        setLoading(false);
       }
-      setListings((data as unknown as ListingCardData[]) ?? []);
-      setTotal(count ?? 0);
-      setLoading(false);
-    });
+    };
+
+    void run();
+    return () => controller.abort();
   }, [buildQuery]);
 
   const loadMore = async () => {
