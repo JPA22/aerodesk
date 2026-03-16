@@ -30,11 +30,11 @@ async function getListing(id: string) {
     .from("aircraft_listings")
     .select(
       `*,
-       aircraft_models!inner (
+       aircraft_models!aircraft_model_id (
          id, name, category,
-         manufacturers!inner (id, name)
+         manufacturers!manufacturer_id (id, name)
        ),
-       listing_images (image_url, is_primary, display_order)`
+       listing_images!listing_id (image_url, is_primary, display_order)`
     )
     .eq("id", id)
     .eq("status", "active")
@@ -60,8 +60,8 @@ async function getSimilarListings(id: string, modelId: string, category: string)
       `id, title, year, asking_price, currency,
        location_city, location_state, location_country,
        total_time_hours, engine_program, condition_rating, featured, published_at,
-       aircraft_models!inner (id, name, category, manufacturer_id, manufacturers!inner (id, name)),
-       listing_images (image_url, is_primary, display_order)`
+       aircraft_models!aircraft_model_id (id, name, category, manufacturer_id, manufacturers!manufacturer_id (id, name)),
+       listing_images!listing_id (image_url, is_primary, display_order)`
     )
     .eq("status", "active")
     .neq("id", id)

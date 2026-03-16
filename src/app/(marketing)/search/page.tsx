@@ -376,12 +376,12 @@ function SearchContent() {
           `id, title, year, asking_price, currency,
            location_city, location_state, location_country,
            total_time_hours, engine_program, condition_rating, featured, published_at,
-           aircraft_models!inner (
+           aircraft_models!aircraft_model_id (
              id, name, category, manufacturer_id,
-             manufacturers!inner (id, name)
+             manufacturers!manufacturer_id (id, name)
            ),
-           listing_images (image_url, is_primary, display_order)`,
-          count ? { count: "exact", head: false } : undefined
+           listing_images!listing_id (image_url, is_primary, display_order)`,
+          count ? { count: "exact" } : undefined
         )
         .eq("status", "active");
 
@@ -415,7 +415,9 @@ function SearchContent() {
     setLoading(true);
     setPage(0);
     buildQuery(0, true).then(({ data, count, error }) => {
-      if (error) console.error("[search] fetch error:", error);
+      if (error) {
+        console.error("[search] fetch error:", error.message, "| code:", error.code, "| details:", error.details, "| hint:", error.hint);
+      }
       setListings((data as unknown as ListingCardData[]) ?? []);
       setTotal(count ?? 0);
       setLoading(false);
@@ -426,7 +428,7 @@ function SearchContent() {
     const nextPage = page + 1;
     setLoadingMore(true);
     const { data, error } = await buildQuery(nextPage * PAGE_SIZE);
-    if (error) console.error("[search] loadMore error:", error);
+    if (error) console.error("[search] loadMore error:", error.message, "| code:", error.code);
     setListings((prev) => [...prev, ...((data as unknown as ListingCardData[]) ?? [])]);
     setPage(nextPage);
     setLoadingMore(false);
