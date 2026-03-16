@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { motion, type Variants } from "framer-motion";
 import { MapPin, ArrowRight } from "lucide-react";
 
@@ -99,9 +100,12 @@ export default function FeaturedListings() {
               Featured Aircraft
             </h2>
           </div>
-          <button className="text-[#2563EB] font-semibold text-sm flex items-center gap-1.5 hover:gap-3 transition-all">
+          <Link
+            href="/search"
+            className="text-[#2563EB] font-semibold text-sm flex items-center gap-1.5 hover:gap-3 transition-all"
+          >
             View all listings <ArrowRight size={16} />
-          </button>
+          </Link>
         </motion.div>
 
         <motion.div

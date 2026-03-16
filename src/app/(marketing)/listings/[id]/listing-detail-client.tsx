@@ -1,0 +1,558 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import {
+  MapPin, Clock, Gauge, Shield, Users, ChevronLeft,
+  ChevronRight, X, Heart, Share2, MessageCircle, Phone,
+} from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/components/providers/auth-provider";
+import ContactModal from "@/components/search/contact-modal";
+import ListingCard, { type ListingCardData } from "@/components/search/listing-card";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type Image = { image_url: string; is_primary: boolean; display_order: number };
+
+type ListingDetail = {
+  id: string;
+  title: string;
+  year: number;
+  asking_price: number;
+  currency: string;
+  description: string | null;
+  serial_number: string | null;
+  registration_number: string | null;
+  total_time_hours: number | null;
+  engine_time_smoh: number | null;
+  engine_program: string;
+  avionics_description: string | null;
+  condition_rating: number | null;
+  maintenance_status: string | null;
+  passenger_seats: number | null;
+  galley_config: string | null;
+  location_city: string | null;
+  location_state: string | null;
+  location_country: string;
+  featured: boolean;
+  aircraft_models: {
+    id: string;
+    name: string;
+    category: string;
+    manufacturers: { id: string; name: string };
+  };
+  listing_images: Image[];
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const CURRENCY_SYMBOL: Record<string, string> = { USD: "$", BRL: "R$", EUR: "€" };
+
+const ENGINE_LABEL: Record<string, string> = {
+  enrolled: "Enrolled", not_enrolled: "Not enrolled", na: "N/A",
+};
+
+const MAINTENANCE_LABEL: Record<string, string> = {
+  annual_current: "Annual current",
+  inspection_due_3mo: "Due within 3 months",
+  inspection_due_6mo: "Due within 6 months",
+  needs_inspection: "Needs inspection",
+  fresh_overhaul: "Just completed major overhaul",
+};
+
+const CONDITION_LABEL: Record<number, string> = {
+  1: "Project", 2: "Poor", 3: "Fair", 4: "Below Average", 5: "Good",
+  6: "Very Good", 7: "Above Average", 8: "Excellent", 9: "Show Quality", 10: "Like New",
+};
+
+const GALLEY_LABEL: Record<string, string> = {
+  none: "No galley", forward: "Forward", aft: "Aft", both: "Forward & aft",
+};
+
+// ── Image Gallery ─────────────────────────────────────────────────────────────
+
+function ImageGallery({ images }: { images: Image[] }) {
+  const sorted = [...images].sort((a, b) => {
+    if (a.is_primary) return -1;
+    if (b.is_primary) return 1;
+    return a.display_order - b.display_order;
+  });
+
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+
+  const prev = () =>
+    setLightboxIdx((i) => (i != null ? (i - 1 + sorted.length) % sorted.length : null));
+  const next = () =>
+    setLightboxIdx((i) => (i != null ? (i + 1) % sorted.length : null));
+
+  useEffect(() => {
+    if (lightboxIdx == null) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") prev();
+      if (e.key === "ArrowRight") next();
+      if (e.key === "Escape") setLightboxIdx(null);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  });
+
+  if (sorted.length === 0) {
+    return (
+      <div className="relative w-full h-72 md:h-96 bg-gradient-to-br from-[#0F172A] to-[#2563EB] rounded-2xl flex items-center justify-center overflow-hidden">
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] bg-[size:24px_24px]" />
+        <svg className="w-24 h-24 text-white/20" fill="currentColor" viewBox="0 0 64 64">
+          <path d="M56 24l-12 4-14-18H24l6 18-12 4-6-6H8l4 10-4 10h4l6-6 12 4-6 18h6l14-18 12 4c4 0 8-2 8-6s-4-6-8-8z" />
+        </svg>
+        <p className="absolute bottom-4 text-white/50 text-sm">No photos available</p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* Grid */}
+      <div
+        className={`grid gap-2 rounded-2xl overflow-hidden ${
+          sorted.length === 1
+            ? "grid-cols-1"
+            : sorted.length === 2
+            ? "grid-cols-2"
+            : sorted.length === 3
+            ? "grid-cols-2 grid-rows-2"
+            : "grid-cols-3 grid-rows-2"
+        }`}
+      >
+        {sorted.slice(0, sorted.length === 3 ? 3 : 5).map((img, idx) => (
+          <div
+            key={idx}
+            className={`relative cursor-pointer overflow-hidden bg-slate-100 ${
+              idx === 0 && sorted.length > 2 ? "row-span-2" : ""
+            } ${sorted.length === 1 ? "h-72 md:h-[460px]" : "h-40 md:h-52"}`}
+            onClick={() => setLightboxIdx(idx)}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={img.image_url}
+              alt={`Photo ${idx + 1}`}
+              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+            />
+            {idx === 4 && sorted.length > 5 && (
+              <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                <span className="text-white font-bold text-lg">+{sorted.length - 5} more</span>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Lightbox */}
+      {lightboxIdx != null && (
+        <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center">
+          <button
+            onClick={() => setLightboxIdx(null)}
+            className="absolute top-4 right-4 text-white/70 hover:text-white p-2"
+          >
+            <X size={24} />
+          </button>
+          <button
+            onClick={prev}
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white p-2"
+          >
+            <ChevronLeft size={32} />
+          </button>
+          <button
+            onClick={next}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white p-2"
+          >
+            <ChevronRight size={32} />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={sorted[lightboxIdx].image_url}
+            alt={`Photo ${lightboxIdx + 1}`}
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
+          />
+          <p className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/50 text-sm">
+            {lightboxIdx + 1} / {sorted.length}
+          </p>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ── ViewCounter (increments on mount) ─────────────────────────────────────────
+
+function ViewCounter({ listingId }: { listingId: string }) {
+  const supabase = createClient();
+  useEffect(() => {
+    const increment = async () => {
+      const { error } = await (supabase.rpc as Function)("increment_views", { listing_id: listingId });
+      if (error) {
+        // Fallback: direct update if RPC doesn't exist
+        const { data } = await supabase
+          .from("aircraft_listings")
+          .select("views_count")
+          .eq("id", listingId)
+          .single();
+        if (data) {
+          await supabase
+            .from("aircraft_listings")
+            .update({ views_count: (data.views_count ?? 0) + 1 })
+            .eq("id", listingId);
+        }
+      }
+    };
+    void increment();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listingId]);
+  return null;
+}
+
+// ── Spec row ──────────────────────────────────────────────────────────────────
+
+function Spec({ label, value }: { label: string; value?: string | number | null }) {
+  if (!value && value !== 0) return null;
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2.5 border-b border-slate-100 last:border-0 gap-1">
+      <span className="text-sm text-[#64748B]">{label}</span>
+      <span className="text-sm font-medium text-[#0F172A] sm:text-right">{value}</span>
+    </div>
+  );
+}
+
+// ── Main client component ─────────────────────────────────────────────────────
+
+export default function ListingDetailClient({
+  listing,
+  similar,
+}: {
+  listing: ListingDetail;
+  similar: ListingCardData[];
+}) {
+  const { user } = useAuth();
+  const supabase = createClient();
+  const [contactOpen, setContactOpen] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const model = listing.aircraft_models;
+  const sym = CURRENCY_SYMBOL[listing.currency] ?? "$";
+  const priceDisplay =
+    listing.asking_price === 0
+      ? "Price on Request"
+      : `${sym} ${listing.asking_price.toLocaleString("en-US")}`;
+
+  const location = [listing.location_city, listing.location_state, listing.location_country]
+    .filter(Boolean)
+    .join(", ");
+
+  // Check if saved
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("saved_listings")
+      .select("listing_id")
+      .eq("user_id", user.id)
+      .eq("listing_id", listing.id)
+      .maybeSingle()
+      .then(({ data }) => setIsSaved(!!data));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, listing.id]);
+
+  const toggleSave = async () => {
+    if (!user) return;
+    if (isSaved) {
+      await supabase
+        .from("saved_listings")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("listing_id", listing.id);
+      setIsSaved(false);
+    } else {
+      await supabase
+        .from("saved_listings")
+        .insert({ user_id: user.id, listing_id: listing.id });
+      setIsSaved(true);
+    }
+  };
+
+  const handleShare = async () => {
+    await navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F1F5F9]">
+      {/* Increment view count silently */}
+      <ViewCounter listingId={listing.id} />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Breadcrumb */}
+        <nav className="text-xs text-[#64748B] mb-6 flex items-center gap-1.5">
+          <a href="/search" className="hover:text-[#2563EB] transition-colors">Aircraft</a>
+          <span>/</span>
+          <span className="capitalize">{model.category}s</span>
+          <span>/</span>
+          <span className="text-[#0F172A] font-medium truncate">{listing.title}</span>
+        </nav>
+
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Left: gallery + details */}
+          <div className="flex-1 min-w-0 space-y-6">
+            {/* Gallery */}
+            <ImageGallery images={listing.listing_images} />
+
+            {/* Title block (mobile) */}
+            <div className="lg:hidden bg-white rounded-2xl border border-slate-200 p-5">
+              <p className="text-xs text-[#64748B] mb-1 font-medium uppercase tracking-wider">
+                {model.manufacturers.name} · {model.category}
+              </p>
+              <h1 className="text-2xl font-bold text-[#0F172A] mb-2">{listing.title}</h1>
+              <div className="flex items-center gap-1.5 text-[#64748B] text-sm">
+                <MapPin size={14} />
+                {location}
+              </div>
+              <p
+                className={`text-2xl font-bold mt-3 ${
+                  listing.asking_price === 0 ? "text-[#64748B] text-lg" : "text-[#2563EB]"
+                }`}
+              >
+                {priceDisplay}
+              </p>
+            </div>
+
+            {/* Specifications */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-6">
+              <h2 className="font-bold text-[#0F172A] mb-5 text-lg">Specifications</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
+                <div>
+                  <Spec label="Year" value={listing.year} />
+                  <Spec label="Manufacturer" value={model.manufacturers.name} />
+                  <Spec label="Model" value={model.name} />
+                  <Spec label="Registration" value={listing.registration_number} />
+                  <Spec label="Serial number" value={listing.serial_number} />
+                  <Spec label="Passenger seats" value={listing.passenger_seats} />
+                  <Spec
+                    label="Galley"
+                    value={listing.galley_config ? GALLEY_LABEL[listing.galley_config] : undefined}
+                  />
+                </div>
+                <div>
+                  <Spec
+                    label="Total time (TT)"
+                    value={
+                      listing.total_time_hours != null
+                        ? `${listing.total_time_hours.toLocaleString()} hrs`
+                        : undefined
+                    }
+                  />
+                  <Spec
+                    label="Engine SMOH"
+                    value={
+                      listing.engine_time_smoh != null
+                        ? `${listing.engine_time_smoh.toLocaleString()} hrs`
+                        : undefined
+                    }
+                  />
+                  <Spec
+                    label="Engine program"
+                    value={ENGINE_LABEL[listing.engine_program ?? "na"]}
+                  />
+                  <Spec
+                    label="Condition"
+                    value={
+                      listing.condition_rating != null
+                        ? `${listing.condition_rating}/10 — ${CONDITION_LABEL[listing.condition_rating]}`
+                        : undefined
+                    }
+                  />
+                  <Spec
+                    label="Maintenance"
+                    value={MAINTENANCE_LABEL[listing.maintenance_status ?? ""] ?? listing.maintenance_status}
+                  />
+                  <Spec
+                    label="Location"
+                    value={location}
+                  />
+                </div>
+              </div>
+
+              {/* Avionics */}
+              {listing.avionics_description && (
+                <div className="mt-5 pt-5 border-t border-slate-100">
+                  <p className="text-sm text-[#64748B] mb-1.5">Avionics</p>
+                  <p className="text-sm text-[#0F172A] leading-relaxed">{listing.avionics_description}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Description */}
+            {listing.description && (
+              <div className="bg-white rounded-2xl border border-slate-200 p-6">
+                <h2 className="font-bold text-[#0F172A] mb-4 text-lg">Description</h2>
+                <p className="text-sm text-[#64748B] leading-relaxed whitespace-pre-line">
+                  {listing.description}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Right: sticky sidebar (desktop) */}
+          <aside className="hidden lg:block w-80 flex-shrink-0">
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 sticky top-24">
+              <p className="text-xs text-[#64748B] mb-1 font-medium uppercase tracking-wider">
+                {model.manufacturers.name} · {model.category}
+              </p>
+              <h1 className="text-xl font-bold text-[#0F172A] mb-1 leading-snug">
+                {listing.title}
+              </h1>
+              <div className="flex items-center gap-1 text-[#64748B] text-sm mb-4">
+                <MapPin size={13} />
+                {location}
+              </div>
+
+              <p
+                className={`text-3xl font-bold mb-6 ${
+                  listing.asking_price === 0 ? "text-[#64748B] text-xl" : "text-[#2563EB]"
+                }`}
+              >
+                {priceDisplay}
+              </p>
+
+              {/* Key specs mini */}
+              <div className="flex gap-3 mb-6">
+                {listing.total_time_hours != null && (
+                  <div className="flex-1 bg-slate-50 rounded-xl p-3 text-center">
+                    <Clock size={16} className="text-[#2563EB] mx-auto mb-1" />
+                    <p className="text-xs font-bold text-[#0F172A]">
+                      {listing.total_time_hours.toLocaleString()}
+                    </p>
+                    <p className="text-[10px] text-[#64748B]">hrs TT</p>
+                  </div>
+                )}
+                {listing.condition_rating != null && (
+                  <div className="flex-1 bg-slate-50 rounded-xl p-3 text-center">
+                    <Gauge size={16} className="text-[#2563EB] mx-auto mb-1" />
+                    <p className="text-xs font-bold text-[#0F172A]">{listing.condition_rating}/10</p>
+                    <p className="text-[10px] text-[#64748B]">Condition</p>
+                  </div>
+                )}
+                {listing.engine_program && listing.engine_program !== "na" && (
+                  <div className="flex-1 bg-slate-50 rounded-xl p-3 text-center">
+                    <Shield size={16} className="text-[#2563EB] mx-auto mb-1" />
+                    <p className="text-[10px] font-bold text-[#0F172A]">
+                      {listing.engine_program === "enrolled" ? "Enrolled" : "Not enrolled"}
+                    </p>
+                    <p className="text-[10px] text-[#64748B]">Engine program</p>
+                  </div>
+                )}
+              </div>
+
+              {/* CTA buttons */}
+              <div className="space-y-3">
+                <button
+                  onClick={() => setContactOpen(true)}
+                  className="w-full bg-[#2563EB] hover:bg-[#3B82F6] text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg shadow-blue-900/20"
+                >
+                  <MessageCircle size={18} />
+                  Contact Seller
+                </button>
+
+                <button
+                  onClick={() => {
+                    const msg = encodeURIComponent(
+                      `Hi, I found this aircraft on AeroDesk and I'm interested: ${listing.title} — ${window.location.href}`
+                    );
+                    window.open(`https://wa.me/?text=${msg}`, "_blank");
+                  }}
+                  className="w-full bg-[#25D366] hover:bg-[#20BA5A] text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                >
+                  <Phone size={18} />
+                  WhatsApp
+                </button>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={toggleSave}
+                    className={`flex-1 border-2 font-semibold py-2.5 rounded-xl flex items-center justify-center gap-1.5 text-sm transition-colors ${
+                      isSaved
+                        ? "border-red-200 bg-red-50 text-red-500"
+                        : "border-slate-200 hover:border-slate-300 text-[#64748B]"
+                    }`}
+                  >
+                    <Heart size={16} className={isSaved ? "fill-red-500" : ""} />
+                    {isSaved ? "Saved" : "Save"}
+                  </button>
+                  <button
+                    onClick={handleShare}
+                    className="flex-1 border-2 border-slate-200 hover:border-slate-300 text-[#64748B] font-semibold py-2.5 rounded-xl flex items-center justify-center gap-1.5 text-sm transition-colors"
+                  >
+                    <Share2 size={16} />
+                    {copied ? "Copied!" : "Share"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        {/* Similar listings */}
+        {similar.length > 0 && (
+          <section className="mt-12">
+            <h2 className="text-xl font-bold text-[#0F172A] mb-6">Similar Aircraft</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {similar.map((l) => (
+                <ListingCard key={l.id} listing={l} />
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+
+      {/* Mobile bottom bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 flex gap-3 lg:hidden z-20">
+        <div className="flex-1">
+          <p
+            className={`font-bold text-lg ${
+              listing.asking_price === 0 ? "text-[#64748B] text-base" : "text-[#2563EB]"
+            }`}
+          >
+            {priceDisplay}
+          </p>
+        </div>
+        <button
+          onClick={handleShare}
+          className="border-2 border-slate-200 text-[#64748B] p-3 rounded-xl"
+        >
+          <Share2 size={18} />
+        </button>
+        <button
+          onClick={toggleSave}
+          className={`border-2 p-3 rounded-xl ${
+            isSaved ? "border-red-200 text-red-500" : "border-slate-200 text-[#64748B]"
+          }`}
+        >
+          <Heart size={18} className={isSaved ? "fill-red-500" : ""} />
+        </button>
+        <button
+          onClick={() => setContactOpen(true)}
+          className="bg-[#2563EB] hover:bg-[#3B82F6] text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2 transition-colors shadow-lg shadow-blue-900/20"
+        >
+          <Users size={18} />
+          Contact
+        </button>
+      </div>
+
+      {/* Contact modal */}
+      {contactOpen && (
+        <ContactModal
+          listingId={listing.id}
+          listingTitle={listing.title}
+          onClose={() => setContactOpen(false)}
+        />
+      )}
+    </div>
+  );
+}

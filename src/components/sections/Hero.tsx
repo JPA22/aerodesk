@@ -1,15 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { motion } from "framer-motion";
 
 const categories = [
-  "All Categories",
-  "Jets",
-  "Turboprops",
-  "Pistons",
-  "Helicopters",
+  { label: "All Categories", value: "" },
+  { label: "Jets", value: "jet" },
+  { label: "Turboprops", value: "turboprop" },
+  { label: "Pistons", value: "piston" },
+  { label: "Helicopters", value: "helicopter" },
 ];
 
 const manufacturers = [
@@ -26,9 +27,19 @@ const manufacturers = [
 ];
 
 export default function Hero() {
-  const [category, setCategory] = useState("All Categories");
+  const router = useRouter();
+  const [category, setCategory] = useState("");
   const [manufacturer, setManufacturer] = useState("All Manufacturers");
   const [maxPrice, setMaxPrice] = useState("");
+
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+    if (category) params.set("category", category);
+    if (manufacturer !== "All Manufacturers") params.set("manufacturer", manufacturer);
+    const priceNum = Number(maxPrice.replace(/,/g, ""));
+    if (priceNum > 0) params.set("maxPrice", String(priceNum));
+    router.push("/search" + (params.toString() ? "?" + params.toString() : ""));
+  };
 
   return (
     <section className="bg-gradient-to-br from-[#0F172A] via-[#0d2347] to-[#1e3a6e] min-h-[calc(100vh-64px)] flex items-center">
@@ -84,7 +95,7 @@ export default function Hero() {
                   className="border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
                 >
                   {categories.map((c) => (
-                    <option key={c}>{c}</option>
+                    <option key={c.value} value={c.value}>{c.label}</option>
                   ))}
                 </select>
               </div>
@@ -120,7 +131,10 @@ export default function Hero() {
               </div>
             </div>
 
-            <button className="w-full bg-[#2563EB] hover:bg-[#3B82F6] text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2.5 transition-colors text-base shadow-lg shadow-blue-900/30">
+            <button
+              onClick={handleSearch}
+              className="w-full bg-[#2563EB] hover:bg-[#3B82F6] text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2.5 transition-colors text-base shadow-lg shadow-blue-900/30"
+            >
               <Search size={18} />
               Search Aircraft
             </button>
