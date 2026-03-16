@@ -25,6 +25,7 @@ export type SearchAlertFrequency = "instant" | "daily" | "weekly";
 
 // ---------------------------------------------------------------------------
 // Database shape (Supabase client generic)
+// Relationships arrays are required for the JS client's type inference to work.
 // ---------------------------------------------------------------------------
 
 export type Database = {
@@ -61,6 +62,7 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
 
       dealer_profiles: {
@@ -109,6 +111,15 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "dealer_profiles_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: true;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
 
       manufacturers: {
@@ -136,6 +147,7 @@ export type Database = {
           aircraft_count?: number;
           created_at?: string;
         };
+        Relationships: [];
       };
 
       aircraft_models: {
@@ -169,6 +181,15 @@ export type Database = {
           typical_seats?: number | null;
           created_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "aircraft_models_manufacturer_id_fkey";
+            columns: ["manufacturer_id"];
+            isOneToOne: false;
+            referencedRelation: "manufacturers";
+            referencedColumns: ["id"];
+          },
+        ];
       };
 
       aircraft_listings: {
@@ -259,6 +280,29 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "aircraft_listings_seller_id_fkey";
+            columns: ["seller_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "aircraft_listings_dealer_id_fkey";
+            columns: ["dealer_id"];
+            isOneToOne: false;
+            referencedRelation: "dealer_profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "aircraft_listings_aircraft_model_id_fkey";
+            columns: ["aircraft_model_id"];
+            isOneToOne: false;
+            referencedRelation: "aircraft_models";
+            referencedColumns: ["id"];
+          },
+        ];
       };
 
       listing_images: {
@@ -286,6 +330,15 @@ export type Database = {
           is_primary?: boolean;
           created_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "listing_images_listing_id_fkey";
+            columns: ["listing_id"];
+            isOneToOne: false;
+            referencedRelation: "aircraft_listings";
+            referencedColumns: ["id"];
+          },
+        ];
       };
 
       leads: {
@@ -319,6 +372,22 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "leads_listing_id_fkey";
+            columns: ["listing_id"];
+            isOneToOne: false;
+            referencedRelation: "aircraft_listings";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "leads_buyer_id_fkey";
+            columns: ["buyer_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
 
       saved_listings: {
@@ -337,6 +406,22 @@ export type Database = {
           listing_id?: string;
           created_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "saved_listings_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "saved_listings_listing_id_fkey";
+            columns: ["listing_id"];
+            isOneToOne: false;
+            referencedRelation: "aircraft_listings";
+            referencedColumns: ["id"];
+          },
+        ];
       };
 
       search_alerts: {
@@ -364,12 +449,23 @@ export type Database = {
           active?: boolean;
           created_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "search_alerts_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
 
     Views: Record<string, never>;
 
     Functions: Record<string, never>;
+
+    CompositeTypes: Record<string, never>;
 
     Enums: {
       user_role: UserRole;
@@ -389,12 +485,12 @@ export type Database = {
 // Convenience row-type aliases
 // ---------------------------------------------------------------------------
 
-export type Profile       = Database["public"]["Tables"]["profiles"]["Row"];
-export type DealerProfile = Database["public"]["Tables"]["dealer_profiles"]["Row"];
-export type Manufacturer  = Database["public"]["Tables"]["manufacturers"]["Row"];
-export type AircraftModel = Database["public"]["Tables"]["aircraft_models"]["Row"];
+export type Profile         = Database["public"]["Tables"]["profiles"]["Row"];
+export type DealerProfile   = Database["public"]["Tables"]["dealer_profiles"]["Row"];
+export type Manufacturer    = Database["public"]["Tables"]["manufacturers"]["Row"];
+export type AircraftModel   = Database["public"]["Tables"]["aircraft_models"]["Row"];
 export type AircraftListing = Database["public"]["Tables"]["aircraft_listings"]["Row"];
-export type ListingImage  = Database["public"]["Tables"]["listing_images"]["Row"];
-export type Lead          = Database["public"]["Tables"]["leads"]["Row"];
-export type SavedListing  = Database["public"]["Tables"]["saved_listings"]["Row"];
-export type SearchAlert   = Database["public"]["Tables"]["search_alerts"]["Row"];
+export type ListingImage    = Database["public"]["Tables"]["listing_images"]["Row"];
+export type Lead            = Database["public"]["Tables"]["leads"]["Row"];
+export type SavedListing    = Database["public"]["Tables"]["saved_listings"]["Row"];
+export type SearchAlert     = Database["public"]["Tables"]["search_alerts"]["Row"];
