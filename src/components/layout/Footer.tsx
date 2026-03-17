@@ -1,17 +1,46 @@
+import Link from "next/link";
 import { Twitter, Linkedin, Instagram, Facebook } from "lucide-react";
 
-const footerSections: Record<string, string[]> = {
-  Marketplace: ["Browse Aircraft", "Categories", "Dealers Directory"],
-  Company: ["About Us", "Careers", "Blog"],
-  Support: ["Help Center", "Contact Us", "Report an Issue"],
-  Legal: ["Terms of Service", "Privacy Policy", "Cookie Policy"],
-};
+const footerSections: { section: string; links: { label: string; href: string }[] }[] = [
+  {
+    section: "Marketplace",
+    links: [
+      { label: "Browse Aircraft", href: "/search" },
+      { label: "Aircraft Valuation", href: "/tools/valuation" },
+      { label: "Dealers Directory", href: "/search?type=dealer" },
+    ],
+  },
+  {
+    section: "Company",
+    links: [
+      { label: "About Us", href: "#" },
+      { label: "Careers", href: "#" },
+      { label: "Blog", href: "#" },
+    ],
+  },
+  {
+    section: "Support",
+    links: [
+      { label: "Help Center", href: "#" },
+      { label: "Contact Us", href: "#" },
+      { label: "Report an Issue", href: "#" },
+    ],
+  },
+  {
+    section: "Legal",
+    links: [
+      { label: "Terms of Service", href: "/terms" },
+      { label: "Privacy Policy", href: "/privacy" },
+      { label: "Cookie Policy", href: "/privacy#cookies" },
+    ],
+  },
+];
 
 const socialLinks = [
-  { Icon: Twitter, label: "Twitter" },
-  { Icon: Linkedin, label: "LinkedIn" },
-  { Icon: Instagram, label: "Instagram" },
-  { Icon: Facebook, label: "Facebook" },
+  { Icon: Twitter, label: "Twitter", href: "#" },
+  { Icon: Linkedin, label: "LinkedIn", href: "#" },
+  { Icon: Instagram, label: "Instagram", href: "#" },
+  { Icon: Facebook, label: "Facebook", href: "#" },
 ];
 
 export default function Footer() {
@@ -29,18 +58,18 @@ export default function Footer() {
 
         {/* Link columns */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
-          {Object.entries(footerSections).map(([section, links]) => (
+          {footerSections.map(({ section, links }) => (
             <div key={section}>
               <h4 className="text-white font-semibold text-sm mb-4">{section}</h4>
               <ul className="space-y-3">
-                {links.map((link) => (
-                  <li key={link}>
-                    <a
-                      href="#"
+                {links.map(({ label, href }) => (
+                  <li key={label}>
+                    <Link
+                      href={href}
                       className="text-slate-400 hover:text-white text-sm transition-colors"
                     >
-                      {link}
-                    </a>
+                      {label}
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -54,10 +83,10 @@ export default function Footer() {
             © 2026 AeroDesk. All rights reserved.
           </p>
           <div className="flex items-center gap-5">
-            {socialLinks.map(({ Icon, label }) => (
+            {socialLinks.map(({ Icon, label, href }) => (
               <a
                 key={label}
-                href="#"
+                href={href}
                 aria-label={label}
                 className="text-slate-400 hover:text-white transition-colors"
               >
