@@ -277,21 +277,28 @@ export default function ListingDetailClient({
         .eq("user_id", user.id)
         .eq("listing_id", listing.id);
       if (error) {
-        showToast("Failed to unsave. Please try again.");
+        alert(`Failed to unsave: ${error.message} (code: ${error.code})`);
         return;
       }
-      setIsSaved(false);
     } else {
       const { error } = await supabase
         .from("saved_listings")
         .insert({ user_id: user.id, listing_id: listing.id });
       if (error) {
-        showToast("Failed to save. Please try again.");
+        alert(`Failed to save: ${error.message} (code: ${error.code})`);
         return;
       }
-      setIsSaved(true);
-      showToast("Aircraft saved to your list.");
     }
+    // Re-verify state from database
+    const { data } = await supabase
+      .from("saved_listings")
+      .select("listing_id")
+      .eq("user_id", user.id)
+      .eq("listing_id", listing.id)
+      .maybeSingle();
+    const nowSaved = !!data;
+    setIsSaved(nowSaved);
+    if (nowSaved) showToast("Aircraft saved to your list.");
   };
 
   const handleShare = async () => {

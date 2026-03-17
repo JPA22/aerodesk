@@ -65,54 +65,56 @@ function getPrimaryImage(images: ListingImage[]): string | null {
 interface SaleDetailsProps {
   listing: Listing;
   onClose: () => void;
-  onSaved: (id: string, data: Partial<Listing>) => void;
+  onRefresh: () => void;
 }
 
 const inputCls =
   "w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 focus:border-[#2563EB] transition-colors";
 
-function SaleDetailsPanel({ listing, onClose, onSaved }: SaleDetailsProps) {
-  const router = useRouter();
-  const [, startTransition] = useTransition();
+function SaleDetailsPanel({ listing, onClose, onRefresh }: SaleDetailsProps) {
   const [buyerName, setBuyerName] = useState(listing.buyer_name ?? "");
   const [buyerEmail, setBuyerEmail] = useState(listing.buyer_email ?? "");
   const [buyerPhone, setBuyerPhone] = useState(listing.buyer_phone ?? "");
-  const [salePrice, setSalePrice] = useState(listing.sale_price?.toString() ?? "");
+  const [salePriceRaw, setSalePriceRaw] = useState<string>(
+    listing.sale_price ? Math.round(listing.sale_price).toString() : ""
+  );
   const [saleNotes, setSaleNotes] = useState(listing.sale_notes ?? "");
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  // Format price with commas for display
+  const salePriceDisplay = salePriceRaw
+    ? Number(salePriceRaw).toLocaleString("en-US")
+    : "";
+
+  function handleSalePriceInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const digits = e.target.value.replace(/[^0-9]/g, "");
+    setSalePriceRaw(digits);
+  }
 
   async function save() {
     setSaving(true);
-    setError(null);
     try {
       const supabase = createClient();
       const payload = {
         buyer_name: buyerName || null,
         buyer_email: buyerEmail || null,
         buyer_phone: buyerPhone || null,
-        sale_price: salePrice ? parseFloat(salePrice) : null,
+        sale_price: salePriceRaw ? parseFloat(salePriceRaw) : null,
         sale_notes: saleNotes || null,
         sold_at: listing.sold_at ?? new Date().toISOString(),
       };
-      const { data, error: err } = await supabase
+      const { error } = await supabase
         .from("aircraft_listings")
         .update(payload)
-        .eq("id", listing.id)
-        .select("id");
-      if (err) {
-        setError(`Save failed: ${err.message}`);
+        .eq("id", listing.id);
+      if (error) {
+        alert(`Save failed: ${error.message} (code: ${error.code})`);
         return;
       }
-      if (!data?.length) {
-        setError("Save failed: permission denied. Please re-login and try again.");
-        return;
-      }
-      onSaved(listing.id, payload);
-      startTransition(() => router.refresh());
+      onRefresh();
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unexpected error. Please try again.");
+      alert(`Unexpected error: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setSaving(false);
     }
@@ -162,9 +164,10 @@ function SaleDetailsPanel({ listing, onClose, onSaved }: SaleDetailsProps) {
             Actual Sale Price ({listing.currency})
           </label>
           <input
-            type="number"
-            value={salePrice}
-            onChange={(e) => setSalePrice(e.target.value)}
+            type="text"
+            inputMode="numeric"
+            value={salePriceDisplay}
+            onChange={handleSalePriceInput}
             placeholder="0"
             className={inputCls}
           />
@@ -180,7 +183,6 @@ function SaleDetailsPanel({ listing, onClose, onSaved }: SaleDetailsProps) {
           className={`${inputCls} resize-none`}
         />
       </div>
-      {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
       <button
         onClick={() => void save()}
         disabled={saving}
@@ -200,10 +202,9 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
   const [tab, setTab] = useState<Tab>("all");
   const [, startTransition] = useTransition();
   const [loadingId, setLoadingId] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [saleDetailsId, setSaleDetailsId] = useState<string | null>(null);
 
-  // ── Optimistic local state (FIX 1: prevents stale-prop race condition) ───────
+  // Mirror listings prop — updated whenever server re-fetches via router.refresh()
   const [localListings, setLocalListings] = useState<Listing[]>(listings);
   useEffect(() => {
     setLocalListings(listings);
@@ -229,64 +230,52 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
     { key: "sold", label: "Sold" },
   ];
 
+  function refresh() {
+    startTransition(() => router.refresh());
+  }
+
   async function updateStatus(listingId: string, status: ListingStatus, confirmMsg?: string) {
     if (confirmMsg && !window.confirm(confirmMsg)) return;
-    setErrorMsg(null);
     setLoadingId(listingId);
 
     const payload: { status: ListingStatus; published_at?: string; sold_at?: string } = { status };
     if (status === "active") payload.published_at = new Date().toISOString();
     if (status === "sold") payload.sold_at = new Date().toISOString();
 
-    // Optimistically update local state immediately
-    setLocalListings((prev) =>
-      prev.map((l) => (l.id === listingId ? { ...l, status } : l))
-    );
-
     const supabase = createClient();
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("aircraft_listings")
       .update(payload)
-      .eq("id", listingId)
-      .select("id");
+      .eq("id", listingId);
 
     setLoadingId(null);
+
     if (error) {
-      setLocalListings(listings);
-      setErrorMsg(`Failed to update listing: ${error.message}`);
+      alert(`Update failed: ${error.message} (code: ${error.code})`);
       return;
     }
-    if (!data?.length) {
-      setLocalListings(listings);
-      setErrorMsg("Update failed: permission denied. Please re-login and try again.");
-      return;
-    }
-    startTransition(() => router.refresh());
+
+    refresh();
   }
 
   async function deleteListing(listingId: string) {
     if (!window.confirm("Delete this listing? This action cannot be undone.")) return;
-    setErrorMsg(null);
     setLoadingId(listingId);
 
-    // Optimistically remove from local state
-    setLocalListings((prev) => prev.filter((l) => l.id !== listingId));
-
     const supabase = createClient();
-    const { error } = await supabase.from("aircraft_listings").delete().eq("id", listingId);
+    const { error } = await supabase
+      .from("aircraft_listings")
+      .delete()
+      .eq("id", listingId);
+
     setLoadingId(null);
+
     if (error) {
-      setLocalListings(listings); // roll back
-      setErrorMsg(`Failed to delete listing: ${error.message}`);
+      alert(`Delete failed: ${error.message} (code: ${error.code})`);
       return;
     }
-    startTransition(() => router.refresh());
-  }
 
-  function handleSaleDetailsSaved(id: string, data: Partial<Listing>) {
-    setLocalListings((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, ...data } : l))
-    );
+    refresh();
   }
 
   return (
@@ -305,13 +294,6 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
           Add New Listing
         </Link>
       </div>
-
-      {errorMsg && (
-        <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 flex items-center justify-between">
-          <span>{errorMsg}</span>
-          <button onClick={() => setErrorMsg(null)}><X size={16} /></button>
-        </div>
-      )}
 
       {/* Tabs */}
       <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit mb-6">
@@ -374,7 +356,6 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.map((listing) => {
-                  // Capture ID in a const so closures are unambiguous
                   const listingId = listing.id;
                   const img = getPrimaryImage(listing.images);
                   const sc = statusConfig[listing.status];
@@ -443,7 +424,7 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                               </button>
                             )}
 
-                            {(listing.status === "draft") && (
+                            {listing.status === "draft" && (
                               <button
                                 onClick={() => void updateStatus(listingId, "active")}
                                 disabled={isLoading}
@@ -504,7 +485,7 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                             <SaleDetailsPanel
                               listing={listing}
                               onClose={() => setSaleDetailsId(null)}
-                              onSaved={handleSaleDetailsSaved}
+                              onRefresh={refresh}
                             />
                           </td>
                         </tr>
@@ -595,7 +576,7 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                     <SaleDetailsPanel
                       listing={listing}
                       onClose={() => setSaleDetailsId(null)}
-                      onSaved={handleSaleDetailsSaved}
+                      onRefresh={refresh}
                     />
                   )}
                 </div>
