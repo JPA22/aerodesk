@@ -76,7 +76,9 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
   async function updateStatus(id: string, status: ListingStatus) {
     setLoadingId(id);
     const supabase = createClient();
-    await supabase.from("aircraft_listings").update({ status }).eq("id", id);
+    const update: { status: ListingStatus; published_at?: string } = { status };
+    if (status === "active") update.published_at = new Date().toISOString();
+    await supabase.from("aircraft_listings").update(update).eq("id", id);
     setLoadingId(null);
     startTransition(() => router.refresh());
   }
@@ -243,6 +245,15 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                             >
                               <CheckCircle size={14} />
                             </button>
+                          ) : (listing.status === "sold" || listing.status === "expired") ? (
+                            <button
+                              onClick={() => void updateStatus(listing.id, "active")}
+                              disabled={isLoading}
+                              className="p-1.5 text-slate-400 hover:text-green-600 rounded transition-colors text-xs font-semibold"
+                              title="Reactivate listing"
+                            >
+                              <CheckCircle size={14} />
+                            </button>
                           ) : null}
                           {listing.status !== "sold" && (
                             <button
@@ -310,11 +321,15 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                         <Pencil size={14} />
                       </Link>
                       {listing.status === "active" ? (
-                        <button onClick={() => void updateStatus(listing.id, "draft")} disabled={isLoading} className="p-1.5 text-slate-400 hover:text-yellow-600">
+                        <button onClick={() => void updateStatus(listing.id, "draft")} disabled={isLoading} className="p-1.5 text-slate-400 hover:text-yellow-600" title="Deactivate">
                           <PauseCircle size={14} />
                         </button>
                       ) : listing.status === "draft" ? (
-                        <button onClick={() => void updateStatus(listing.id, "active")} disabled={isLoading} className="p-1.5 text-slate-400 hover:text-green-600">
+                        <button onClick={() => void updateStatus(listing.id, "active")} disabled={isLoading} className="p-1.5 text-slate-400 hover:text-green-600" title="Activate">
+                          <CheckCircle size={14} />
+                        </button>
+                      ) : (listing.status === "sold" || listing.status === "expired") ? (
+                        <button onClick={() => void updateStatus(listing.id, "active")} disabled={isLoading} className="p-1.5 text-slate-400 hover:text-green-600" title="Reactivate">
                           <CheckCircle size={14} />
                         </button>
                       ) : null}

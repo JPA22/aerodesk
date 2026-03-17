@@ -36,7 +36,7 @@ export default async function DashboardPage() {
     supabase.from("profiles").select("full_name, role").eq("id", user!.id).single(),
     supabase
       .from("aircraft_listings")
-      .select("id, status, views_count")
+      .select("id, title, status, views_count")
       .eq("seller_id", user!.id),
   ]);
 
@@ -157,13 +157,19 @@ export default async function DashboardPage() {
         <div className="lg:col-span-2 bg-white rounded-xl border border-slate-100 shadow-sm p-6">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h3 className="font-semibold text-[#0F172A]">Views (last 30 days)</h3>
+              <h3 className="font-semibold text-[#0F172A]">Views by Listing</h3>
               <p className="text-xs text-[#64748B] mt-0.5">
                 {totalViews === 0 ? "No views yet" : `${totalViews} total views`}
               </p>
             </div>
           </div>
-          <ViewsChart totalViews={totalViews} />
+          <ViewsChart
+            listings={(listingsData ?? []).map((l) => ({
+              id: l.id,
+              title: l.title,
+              views_count: l.views_count ?? 0,
+            }))}
+          />
         </div>
 
         {/* Quick actions */}
