@@ -34,10 +34,7 @@ interface Listing {
   images: ListingImage[];
 }
 
-const statusConfig: Record<
-  ListingStatus,
-  { label: string; cls: string }
-> = {
+const statusConfig: Record<ListingStatus, { label: string; cls: string }> = {
   active: { label: "Active", cls: "bg-green-100 text-green-700" },
   draft: { label: "Draft", cls: "bg-yellow-100 text-yellow-700" },
   sold: { label: "Sold", cls: "bg-red-100 text-red-600" },
@@ -50,8 +47,9 @@ type Tab = "all" | "active" | "draft" | "sold";
 export default function ListingsClient({ listings }: { listings: Listing[] }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("all");
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const filtered = listings.filter((l) => {
     if (tab === "all") return true;
@@ -73,30 +71,43 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
     { key: "sold", label: "Sold" },
   ];
 
-  async function updateStatus(id: string, status: ListingStatus) {
+  async function updateStatus(id: string, status: ListingStatus, confirm?: string) {
+    if (confirm && !window.confirm(confirm)) return;
+    setErrorMsg(null);
     setLoadingId(id);
     const supabase = createClient();
-    const update: { status: ListingStatus; published_at?: string } = { status };
-    if (status === "active") update.published_at = new Date().toISOString();
-    await supabase.from("aircraft_listings").update(update).eq("id", id);
+    const payload: { status: ListingStatus; published_at?: string } = { status };
+    if (status === "active") payload.published_at = new Date().toISOString();
+    const { error } = await supabase
+      .from("aircraft_listings")
+      .update(payload)
+      .eq("id", id);
     setLoadingId(null);
+    if (error) {
+      setErrorMsg(`Failed to update listing: ${error.message}`);
+      return;
+    }
     startTransition(() => router.refresh());
   }
 
   async function deleteListing(id: string) {
-    if (!confirm("Delete this listing? This action cannot be undone.")) return;
+    if (!window.confirm("Delete this listing? This action cannot be undone.")) return;
+    setErrorMsg(null);
     setLoadingId(id);
     const supabase = createClient();
-    await supabase.from("aircraft_listings").delete().eq("id", id);
+    const { error } = await supabase.from("aircraft_listings").delete().eq("id", id);
     setLoadingId(null);
+    if (error) {
+      setErrorMsg(`Failed to delete listing: ${error.message}`);
+      return;
+    }
     startTransition(() => router.refresh());
   }
 
   function getPrimaryImage(images: ListingImage[]): string | null {
     const primary = images.find((i) => i.is_primary);
     if (primary) return primary.image_url;
-    const sorted = [...images].sort((a, b) => a.display_order - b.display_order);
-    return sorted[0]?.image_url ?? null;
+    return [...images].sort((a, b) => a.display_order - b.display_order)[0]?.image_url ?? null;
   }
 
   return (
@@ -105,9 +116,7 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-[#0F172A]">My Listings</h1>
-          <p className="text-[#64748B] text-sm mt-1">
-            Manage your aircraft listings
-          </p>
+          <p className="text-[#64748B] text-sm mt-1">Manage your aircraft listings</p>
         </div>
         <Link
           href="/listings/new"
@@ -117,6 +126,12 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
           Add New Listing
         </Link>
       </div>
+
+      {errorMsg && (
+        <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+          {errorMsg}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit mb-6">
@@ -144,7 +159,7 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
         ))}
       </div>
 
-      {/* Table */}
+      {/* Table / Empty */}
       {filtered.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-12 flex flex-col items-center text-center">
           <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center mb-4">
@@ -187,10 +202,16 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                   const sc = statusConfig[listing.status];
                   const isLoading = loadingId === listing.id;
                   return (
-                    <tr key={listing.id} className={`hover:bg-slate-50 transition-colors ${isLoading ? "opacity-50" : ""}`}>
+                    <tr
+                      key={listing.id}
+                      className={`hover:bg-slate-50 transition-colors ${isLoading ? "opacity-50 pointer-events-none" : ""}`}
+                    >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-9 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
+                          <Link
+                            href={`/listings/${listing.id}`}
+                            className="w-12 h-9 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0 block hover:opacity-80 transition-opacity"
+                          >
                             {img ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={img} alt="" className="w-full h-full object-cover" />
@@ -199,10 +220,13 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                                 <Plane size={14} className="text-slate-300" />
                               </div>
                             )}
-                          </div>
-                          <span className="font-medium text-[#0F172A] truncate max-w-[200px]">
+                          </Link>
+                          <Link
+                            href={`/listings/${listing.id}`}
+                            className="font-medium text-[#0F172A] hover:text-[#2563EB] hover:underline truncate max-w-[200px] transition-colors"
+                          >
                             {listing.title}
-                          </span>
+                          </Link>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-[#0F172A] font-medium">
@@ -227,16 +251,25 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                           >
                             <Pencil size={14} />
                           </Link>
-                          {listing.status === "active" ? (
+
+                          {listing.status === "active" && (
                             <button
-                              onClick={() => void updateStatus(listing.id, "draft")}
+                              onClick={() =>
+                                void updateStatus(
+                                  listing.id,
+                                  "draft",
+                                  "Deactivate this listing? It will no longer appear in search results."
+                                )
+                              }
                               disabled={isLoading}
                               className="p-1.5 text-slate-400 hover:text-yellow-600 rounded transition-colors"
                               title="Deactivate"
                             >
                               <PauseCircle size={14} />
                             </button>
-                          ) : listing.status === "draft" ? (
+                          )}
+
+                          {listing.status === "draft" && (
                             <button
                               onClick={() => void updateStatus(listing.id, "active")}
                               disabled={isLoading}
@@ -245,19 +278,28 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                             >
                               <CheckCircle size={14} />
                             </button>
-                          ) : (listing.status === "sold" || listing.status === "expired") ? (
+                          )}
+
+                          {(listing.status === "sold" || listing.status === "expired") && (
                             <button
                               onClick={() => void updateStatus(listing.id, "active")}
                               disabled={isLoading}
-                              className="p-1.5 text-slate-400 hover:text-green-600 rounded transition-colors text-xs font-semibold"
-                              title="Reactivate listing"
+                              className="p-1.5 text-slate-400 hover:text-green-600 rounded transition-colors"
+                              title="Reactivate"
                             >
                               <CheckCircle size={14} />
                             </button>
-                          ) : null}
+                          )}
+
                           {listing.status !== "sold" && (
                             <button
-                              onClick={() => void updateStatus(listing.id, "sold")}
+                              onClick={() =>
+                                void updateStatus(
+                                  listing.id,
+                                  "sold",
+                                  "Mark this listing as sold? Buyers will no longer be able to contact you about it."
+                                )
+                              }
                               disabled={isLoading}
                               className="p-1.5 text-slate-400 hover:text-red-500 rounded transition-colors text-xs font-semibold"
                               title="Mark as Sold"
@@ -265,6 +307,7 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                               Sold
                             </button>
                           )}
+
                           <button
                             onClick={() => void deleteListing(listing.id)}
                             disabled={isLoading}
@@ -289,9 +332,15 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
               const sc = statusConfig[listing.status];
               const isLoading = loadingId === listing.id;
               return (
-                <div key={listing.id} className={`p-4 ${isLoading ? "opacity-50" : ""}`}>
+                <div
+                  key={listing.id}
+                  className={`p-4 ${isLoading ? "opacity-50 pointer-events-none" : ""}`}
+                >
                   <div className="flex gap-3 mb-3">
-                    <div className="w-16 h-12 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
+                    <Link
+                      href={`/listings/${listing.id}`}
+                      className="w-16 h-12 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0 block hover:opacity-80 transition-opacity"
+                    >
                       {img ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={img} alt="" className="w-full h-full object-cover" />
@@ -300,9 +349,14 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                           <Plane size={16} className="text-slate-300" />
                         </div>
                       )}
-                    </div>
+                    </Link>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-[#0F172A] text-sm truncate">{listing.title}</p>
+                      <Link
+                        href={`/listings/${listing.id}`}
+                        className="font-medium text-[#0F172A] hover:text-[#2563EB] hover:underline text-sm truncate block transition-colors"
+                      >
+                        {listing.title}
+                      </Link>
                       <p className="text-[#2563EB] font-semibold text-sm mt-0.5">
                         {listing.currency} {listing.asking_price.toLocaleString()}
                       </p>
@@ -317,23 +371,59 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                       <span className="flex items-center gap-1"><Users size={11} /> {listing.leads_count}</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Link href={`/listings/new?edit=${listing.id}`} className="p-1.5 text-slate-400 hover:text-[#2563EB]">
+                      <Link
+                        href={`/listings/new?edit=${listing.id}`}
+                        className="p-1.5 text-slate-400 hover:text-[#2563EB]"
+                        title="Edit"
+                      >
                         <Pencil size={14} />
                       </Link>
-                      {listing.status === "active" ? (
-                        <button onClick={() => void updateStatus(listing.id, "draft")} disabled={isLoading} className="p-1.5 text-slate-400 hover:text-yellow-600" title="Deactivate">
+
+                      {listing.status === "active" && (
+                        <button
+                          onClick={() =>
+                            void updateStatus(
+                              listing.id,
+                              "draft",
+                              "Deactivate this listing? It will no longer appear in search results."
+                            )
+                          }
+                          disabled={isLoading}
+                          className="p-1.5 text-slate-400 hover:text-yellow-600"
+                          title="Deactivate"
+                        >
                           <PauseCircle size={14} />
                         </button>
-                      ) : listing.status === "draft" ? (
-                        <button onClick={() => void updateStatus(listing.id, "active")} disabled={isLoading} className="p-1.5 text-slate-400 hover:text-green-600" title="Activate">
+                      )}
+
+                      {listing.status === "draft" && (
+                        <button
+                          onClick={() => void updateStatus(listing.id, "active")}
+                          disabled={isLoading}
+                          className="p-1.5 text-slate-400 hover:text-green-600"
+                          title="Activate"
+                        >
                           <CheckCircle size={14} />
                         </button>
-                      ) : (listing.status === "sold" || listing.status === "expired") ? (
-                        <button onClick={() => void updateStatus(listing.id, "active")} disabled={isLoading} className="p-1.5 text-slate-400 hover:text-green-600" title="Reactivate">
+                      )}
+
+                      {(listing.status === "sold" || listing.status === "expired") && (
+                        <button
+                          onClick={() => void updateStatus(listing.id, "active")}
+                          disabled={isLoading}
+                          className="p-1.5 text-slate-400 hover:text-green-600"
+                          title="Reactivate"
+                        >
                           <CheckCircle size={14} />
                         </button>
-                      ) : null}
-                      <button onClick={() => void deleteListing(listing.id)} disabled={isLoading} className="p-1.5 text-slate-400 hover:text-red-500">
+                      )}
+
+                      <button
+                        onClick={() => void deleteListing(listing.id)}
+                        disabled={isLoading}
+                        className="p-1.5 text-slate-400 hover:text-red-500"
+                        title="Delete"
+                      >
                         <Trash2 size={14} />
                       </button>
                     </div>

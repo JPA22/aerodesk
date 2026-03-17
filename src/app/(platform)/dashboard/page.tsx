@@ -36,7 +36,7 @@ export default async function DashboardPage() {
     supabase.from("profiles").select("full_name, role").eq("id", user!.id).single(),
     supabase
       .from("aircraft_listings")
-      .select("id, title, status, views_count")
+      .select("id, title, status, views_count, leads_count")
       .eq("seller_id", user!.id),
   ]);
 
@@ -168,6 +168,7 @@ export default async function DashboardPage() {
               id: l.id,
               title: l.title,
               views_count: l.views_count ?? 0,
+              leads_count: l.leads_count ?? 0,
             }))}
           />
         </div>
