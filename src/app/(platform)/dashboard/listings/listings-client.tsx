@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -12,6 +12,9 @@ import {
   CheckCircle,
   PauseCircle,
   Plane,
+  ClipboardList,
+  X,
+  Save,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { ListingStatus } from "@/types/database";
@@ -32,6 +35,12 @@ interface Listing {
   leads_count: number;
   created_at: string;
   images: ListingImage[];
+  sale_price: number | null;
+  buyer_name: string | null;
+  buyer_email: string | null;
+  buyer_phone: string | null;
+  sale_notes: string | null;
+  sold_at: string | null;
 }
 
 const statusConfig: Record<ListingStatus, { label: string; cls: string }> = {
@@ -44,24 +53,159 @@ const statusConfig: Record<ListingStatus, { label: string; cls: string }> = {
 
 type Tab = "all" | "active" | "draft" | "sold";
 
+function getPrimaryImage(images: ListingImage[]): string | null {
+  const primary = images.find((i) => i.is_primary);
+  if (primary) return primary.image_url;
+  return [...images].sort((a, b) => a.display_order - b.display_order)[0]?.image_url ?? null;
+}
+
+// ── Sale Details Panel ────────────────────────────────────────────────────────
+
+interface SaleDetailsProps {
+  listing: Listing;
+  onClose: () => void;
+  onSaved: (id: string, data: Partial<Listing>) => void;
+}
+
+const inputCls =
+  "w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 focus:border-[#2563EB] transition-colors";
+
+function SaleDetailsPanel({ listing, onClose, onSaved }: SaleDetailsProps) {
+  const [buyerName, setBuyerName] = useState(listing.buyer_name ?? "");
+  const [buyerEmail, setBuyerEmail] = useState(listing.buyer_email ?? "");
+  const [buyerPhone, setBuyerPhone] = useState(listing.buyer_phone ?? "");
+  const [salePrice, setSalePrice] = useState(listing.sale_price?.toString() ?? "");
+  const [saleNotes, setSaleNotes] = useState(listing.sale_notes ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    const supabase = createClient();
+    const payload = {
+      buyer_name: buyerName || null,
+      buyer_email: buyerEmail || null,
+      buyer_phone: buyerPhone || null,
+      sale_price: salePrice ? parseFloat(salePrice) : null,
+      sale_notes: saleNotes || null,
+      sold_at: listing.sold_at ?? new Date().toISOString(),
+    };
+    const { error: err } = await supabase
+      .from("aircraft_listings")
+      .update(payload)
+      .eq("id", listing.id);
+    setSaving(false);
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    onSaved(listing.id, payload);
+    onClose();
+  }
+
+  return (
+    <div className="border-t border-slate-100 bg-slate-50 px-4 py-4">
+      <div className="flex items-center justify-between mb-4">
+        <h4 className="font-semibold text-[#0F172A] text-sm">Sale Details</h4>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+          <X size={16} />
+        </button>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+        <div>
+          <label className="block text-xs font-medium text-[#64748B] mb-1">Buyer Name</label>
+          <input
+            type="text"
+            value={buyerName}
+            onChange={(e) => setBuyerName(e.target.value)}
+            placeholder="John Smith"
+            className={inputCls}
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-[#64748B] mb-1">Buyer Email</label>
+          <input
+            type="email"
+            value={buyerEmail}
+            onChange={(e) => setBuyerEmail(e.target.value)}
+            placeholder="buyer@example.com"
+            className={inputCls}
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-[#64748B] mb-1">Buyer Phone</label>
+          <input
+            type="tel"
+            value={buyerPhone}
+            onChange={(e) => setBuyerPhone(e.target.value)}
+            placeholder="+1 (555) 000-0000"
+            className={inputCls}
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-[#64748B] mb-1">
+            Actual Sale Price ({listing.currency})
+          </label>
+          <input
+            type="number"
+            value={salePrice}
+            onChange={(e) => setSalePrice(e.target.value)}
+            placeholder="0"
+            className={inputCls}
+          />
+        </div>
+      </div>
+      <div className="mb-3">
+        <label className="block text-xs font-medium text-[#64748B] mb-1">Sale Notes</label>
+        <textarea
+          value={saleNotes}
+          onChange={(e) => setSaleNotes(e.target.value)}
+          placeholder="Any additional notes about the sale…"
+          rows={2}
+          className={`${inputCls} resize-none`}
+        />
+      </div>
+      {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
+      <button
+        onClick={() => void save()}
+        disabled={saving}
+        className="inline-flex items-center gap-1.5 bg-[#2563EB] hover:bg-[#3B82F6] disabled:opacity-60 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+      >
+        <Save size={13} />
+        {saving ? "Saving…" : "Save Sale Details"}
+      </button>
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
 export default function ListingsClient({ listings }: { listings: Listing[] }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("all");
   const [, startTransition] = useTransition();
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [saleDetailsId, setSaleDetailsId] = useState<string | null>(null);
 
-  const filtered = listings.filter((l) => {
+  // ── Optimistic local state (FIX 1: prevents stale-prop race condition) ───────
+  const [localListings, setLocalListings] = useState<Listing[]>(listings);
+  useEffect(() => {
+    setLocalListings(listings);
+  }, [listings]);
+
+  const filtered = localListings.filter((l) => {
     if (tab === "all") return true;
     if (tab === "sold") return l.status === "sold";
     return l.status === tab;
   });
 
   const tabCounts: Record<Tab, number> = {
-    all: listings.length,
-    active: listings.filter((l) => l.status === "active").length,
-    draft: listings.filter((l) => l.status === "draft").length,
-    sold: listings.filter((l) => l.status === "sold").length,
+    all: localListings.length,
+    active: localListings.filter((l) => l.status === "active").length,
+    draft: localListings.filter((l) => l.status === "draft").length,
+    sold: localListings.filter((l) => l.status === "sold").length,
   };
 
   const tabs: { key: Tab; label: string }[] = [
@@ -71,43 +215,59 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
     { key: "sold", label: "Sold" },
   ];
 
-  async function updateStatus(id: string, status: ListingStatus, confirm?: string) {
-    if (confirm && !window.confirm(confirm)) return;
+  async function updateStatus(listingId: string, status: ListingStatus, confirmMsg?: string) {
+    if (confirmMsg && !window.confirm(confirmMsg)) return;
     setErrorMsg(null);
-    setLoadingId(id);
-    const supabase = createClient();
-    const payload: { status: ListingStatus; published_at?: string } = { status };
+    setLoadingId(listingId);
+
+    const payload: { status: ListingStatus; published_at?: string; sold_at?: string } = { status };
     if (status === "active") payload.published_at = new Date().toISOString();
+    if (status === "sold") payload.sold_at = new Date().toISOString();
+
+    // Optimistically update local state immediately
+    setLocalListings((prev) =>
+      prev.map((l) => (l.id === listingId ? { ...l, status } : l))
+    );
+
+    const supabase = createClient();
     const { error } = await supabase
       .from("aircraft_listings")
       .update(payload)
-      .eq("id", id);
+      .eq("id", listingId);
+
     setLoadingId(null);
     if (error) {
+      // Roll back optimistic update
+      setLocalListings(listings);
       setErrorMsg(`Failed to update listing: ${error.message}`);
       return;
     }
     startTransition(() => router.refresh());
   }
 
-  async function deleteListing(id: string) {
+  async function deleteListing(listingId: string) {
     if (!window.confirm("Delete this listing? This action cannot be undone.")) return;
     setErrorMsg(null);
-    setLoadingId(id);
+    setLoadingId(listingId);
+
+    // Optimistically remove from local state
+    setLocalListings((prev) => prev.filter((l) => l.id !== listingId));
+
     const supabase = createClient();
-    const { error } = await supabase.from("aircraft_listings").delete().eq("id", id);
+    const { error } = await supabase.from("aircraft_listings").delete().eq("id", listingId);
     setLoadingId(null);
     if (error) {
+      setLocalListings(listings); // roll back
       setErrorMsg(`Failed to delete listing: ${error.message}`);
       return;
     }
     startTransition(() => router.refresh());
   }
 
-  function getPrimaryImage(images: ListingImage[]): string | null {
-    const primary = images.find((i) => i.is_primary);
-    if (primary) return primary.image_url;
-    return [...images].sort((a, b) => a.display_order - b.display_order)[0]?.image_url ?? null;
+  function handleSaleDetailsSaved(id: string, data: Partial<Listing>) {
+    setLocalListings((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, ...data } : l))
+    );
   }
 
   return (
@@ -128,8 +288,9 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
       </div>
 
       {errorMsg && (
-        <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
-          {errorMsg}
+        <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 flex items-center justify-between">
+          <span>{errorMsg}</span>
+          <button onClick={() => setErrorMsg(null)}><X size={16} /></button>
         </div>
       )}
 
@@ -147,11 +308,7 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
           >
             {label}
             {tabCounts[key] > 0 && (
-              <span
-                className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${
-                  tab === key ? "bg-slate-100" : "bg-white"
-                }`}
-              >
+              <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${tab === key ? "bg-slate-100" : "bg-white"}`}>
                 {tabCounts[key]}
               </span>
             )}
@@ -198,127 +355,143 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.map((listing) => {
+                  // Capture ID in a const so closures are unambiguous
+                  const listingId = listing.id;
                   const img = getPrimaryImage(listing.images);
                   const sc = statusConfig[listing.status];
-                  const isLoading = loadingId === listing.id;
+                  const isLoading = loadingId === listingId;
+                  const showSaleDetails = saleDetailsId === listingId;
+
                   return (
-                    <tr
-                      key={listing.id}
-                      className={`hover:bg-slate-50 transition-colors ${isLoading ? "opacity-50 pointer-events-none" : ""}`}
-                    >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <Link
-                            href={`/listings/${listing.id}`}
-                            className="w-12 h-9 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0 block hover:opacity-80 transition-opacity"
-                          >
-                            {img ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={img} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <Plane size={14} className="text-slate-300" />
-                              </div>
+                    <>
+                      <tr
+                        key={listingId}
+                        className={`hover:bg-slate-50 transition-colors ${isLoading ? "opacity-50 pointer-events-none" : ""}`}
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <Link
+                              href={`/listings/${listingId}`}
+                              className="w-12 h-9 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0 block hover:opacity-80 transition-opacity"
+                            >
+                              {img ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={img} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Plane size={14} className="text-slate-300" />
+                                </div>
+                              )}
+                            </Link>
+                            <Link
+                              href={`/listings/${listingId}`}
+                              className="font-medium text-[#0F172A] hover:text-[#2563EB] hover:underline truncate max-w-[200px] transition-colors"
+                            >
+                              {listing.title}
+                            </Link>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-[#0F172A] font-medium">
+                          {listing.currency} {listing.asking_price.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${sc.cls}`}>
+                            {sc.label}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-[#64748B]">{listing.views_count}</td>
+                        <td className="px-4 py-3 text-[#64748B]">{listing.leads_count}</td>
+                        <td className="px-4 py-3 text-[#64748B]">
+                          {new Date(listing.created_at).toLocaleDateString("pt-BR")}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5 justify-end">
+                            <Link
+                              href={`/listings/new?edit=${listingId}`}
+                              className="p-1.5 text-slate-400 hover:text-[#2563EB] rounded transition-colors"
+                              title="Edit"
+                            >
+                              <Pencil size={14} />
+                            </Link>
+
+                            {listing.status === "active" && (
+                              <button
+                                onClick={() => void updateStatus(listingId, "draft", "Deactivate this listing? It will no longer appear in search results.")}
+                                disabled={isLoading}
+                                className="p-1.5 text-slate-400 hover:text-yellow-600 rounded transition-colors"
+                                title="Deactivate"
+                              >
+                                <PauseCircle size={14} />
+                              </button>
                             )}
-                          </Link>
-                          <Link
-                            href={`/listings/${listing.id}`}
-                            className="font-medium text-[#0F172A] hover:text-[#2563EB] hover:underline truncate max-w-[200px] transition-colors"
-                          >
-                            {listing.title}
-                          </Link>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-[#0F172A] font-medium">
-                        {listing.currency} {listing.asking_price.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${sc.cls}`}>
-                          {sc.label}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-[#64748B]">{listing.views_count}</td>
-                      <td className="px-4 py-3 text-[#64748B]">{listing.leads_count}</td>
-                      <td className="px-4 py-3 text-[#64748B]">
-                        {new Date(listing.created_at).toLocaleDateString("pt-BR")}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2 justify-end">
-                          <Link
-                            href={`/listings/new?edit=${listing.id}`}
-                            className="p-1.5 text-slate-400 hover:text-[#2563EB] rounded transition-colors"
-                            title="Edit"
-                          >
-                            <Pencil size={14} />
-                          </Link>
 
-                          {listing.status === "active" && (
+                            {(listing.status === "draft") && (
+                              <button
+                                onClick={() => void updateStatus(listingId, "active")}
+                                disabled={isLoading}
+                                className="p-1.5 text-slate-400 hover:text-green-600 rounded transition-colors"
+                                title="Activate"
+                              >
+                                <CheckCircle size={14} />
+                              </button>
+                            )}
+
+                            {(listing.status === "sold" || listing.status === "expired") && (
+                              <button
+                                onClick={() => void updateStatus(listingId, "active")}
+                                disabled={isLoading}
+                                className="p-1.5 text-slate-400 hover:text-green-600 rounded transition-colors"
+                                title="Reactivate"
+                              >
+                                <CheckCircle size={14} />
+                              </button>
+                            )}
+
+                            {listing.status !== "sold" && (
+                              <button
+                                onClick={() => void updateStatus(listingId, "sold", "Mark this listing as sold?")}
+                                disabled={isLoading}
+                                className="p-1.5 text-slate-400 hover:text-red-500 rounded transition-colors text-xs font-semibold"
+                                title="Mark as Sold"
+                              >
+                                Sold
+                              </button>
+                            )}
+
+                            {listing.status === "sold" && (
+                              <button
+                                onClick={() => setSaleDetailsId(showSaleDetails ? null : listingId)}
+                                className="p-1.5 text-slate-400 hover:text-[#2563EB] rounded transition-colors"
+                                title="Sale Details"
+                              >
+                                <ClipboardList size={14} />
+                              </button>
+                            )}
+
                             <button
-                              onClick={() =>
-                                void updateStatus(
-                                  listing.id,
-                                  "draft",
-                                  "Deactivate this listing? It will no longer appear in search results."
-                                )
-                              }
+                              onClick={() => void deleteListing(listingId)}
                               disabled={isLoading}
-                              className="p-1.5 text-slate-400 hover:text-yellow-600 rounded transition-colors"
-                              title="Deactivate"
+                              className="p-1.5 text-slate-400 hover:text-red-500 rounded transition-colors"
+                              title="Delete"
                             >
-                              <PauseCircle size={14} />
+                              <Trash2 size={14} />
                             </button>
-                          )}
+                          </div>
+                        </td>
+                      </tr>
 
-                          {listing.status === "draft" && (
-                            <button
-                              onClick={() => void updateStatus(listing.id, "active")}
-                              disabled={isLoading}
-                              className="p-1.5 text-slate-400 hover:text-green-600 rounded transition-colors"
-                              title="Activate"
-                            >
-                              <CheckCircle size={14} />
-                            </button>
-                          )}
-
-                          {(listing.status === "sold" || listing.status === "expired") && (
-                            <button
-                              onClick={() => void updateStatus(listing.id, "active")}
-                              disabled={isLoading}
-                              className="p-1.5 text-slate-400 hover:text-green-600 rounded transition-colors"
-                              title="Reactivate"
-                            >
-                              <CheckCircle size={14} />
-                            </button>
-                          )}
-
-                          {listing.status !== "sold" && (
-                            <button
-                              onClick={() =>
-                                void updateStatus(
-                                  listing.id,
-                                  "sold",
-                                  "Mark this listing as sold? Buyers will no longer be able to contact you about it."
-                                )
-                              }
-                              disabled={isLoading}
-                              className="p-1.5 text-slate-400 hover:text-red-500 rounded transition-colors text-xs font-semibold"
-                              title="Mark as Sold"
-                            >
-                              Sold
-                            </button>
-                          )}
-
-                          <button
-                            onClick={() => void deleteListing(listing.id)}
-                            disabled={isLoading}
-                            className="p-1.5 text-slate-400 hover:text-red-500 rounded transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                      {showSaleDetails && (
+                        <tr key={`${listingId}-sale`}>
+                          <td colSpan={7} className="p-0">
+                            <SaleDetailsPanel
+                              listing={listing}
+                              onClose={() => setSaleDetailsId(null)}
+                              onSaved={handleSaleDetailsSaved}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   );
                 })}
               </tbody>
@@ -328,106 +501,85 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
           {/* Mobile cards */}
           <div className="md:hidden divide-y divide-slate-100">
             {filtered.map((listing) => {
+              const listingId = listing.id;
               const img = getPrimaryImage(listing.images);
               const sc = statusConfig[listing.status];
-              const isLoading = loadingId === listing.id;
+              const isLoading = loadingId === listingId;
+              const showSaleDetails = saleDetailsId === listingId;
               return (
-                <div
-                  key={listing.id}
-                  className={`p-4 ${isLoading ? "opacity-50 pointer-events-none" : ""}`}
-                >
-                  <div className="flex gap-3 mb-3">
-                    <Link
-                      href={`/listings/${listing.id}`}
-                      className="w-16 h-12 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0 block hover:opacity-80 transition-opacity"
-                    >
-                      {img ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={img} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Plane size={16} className="text-slate-300" />
-                        </div>
-                      )}
-                    </Link>
-                    <div className="flex-1 min-w-0">
+                <div key={listingId} className={isLoading ? "opacity-50 pointer-events-none" : ""}>
+                  <div className="p-4">
+                    <div className="flex gap-3 mb-3">
                       <Link
-                        href={`/listings/${listing.id}`}
-                        className="font-medium text-[#0F172A] hover:text-[#2563EB] hover:underline text-sm truncate block transition-colors"
+                        href={`/listings/${listingId}`}
+                        className="w-16 h-12 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0 block hover:opacity-80 transition-opacity"
                       >
-                        {listing.title}
+                        {img ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={img} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Plane size={16} className="text-slate-300" />
+                          </div>
+                        )}
                       </Link>
-                      <p className="text-[#2563EB] font-semibold text-sm mt-0.5">
-                        {listing.currency} {listing.asking_price.toLocaleString()}
-                      </p>
+                      <div className="flex-1 min-w-0">
+                        <Link
+                          href={`/listings/${listingId}`}
+                          className="font-medium text-[#0F172A] hover:text-[#2563EB] hover:underline text-sm truncate block transition-colors"
+                        >
+                          {listing.title}
+                        </Link>
+                        <p className="text-[#2563EB] font-semibold text-sm mt-0.5">
+                          {listing.currency} {listing.asking_price.toLocaleString()}
+                        </p>
+                      </div>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full h-fit ${sc.cls}`}>
+                        {sc.label}
+                      </span>
                     </div>
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full h-fit ${sc.cls}`}>
-                      {sc.label}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-4 text-xs text-[#64748B]">
-                      <span className="flex items-center gap-1"><Eye size={11} /> {listing.views_count}</span>
-                      <span className="flex items-center gap-1"><Users size={11} /> {listing.leads_count}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Link
-                        href={`/listings/new?edit=${listing.id}`}
-                        className="p-1.5 text-slate-400 hover:text-[#2563EB]"
-                        title="Edit"
-                      >
-                        <Pencil size={14} />
-                      </Link>
-
-                      {listing.status === "active" && (
-                        <button
-                          onClick={() =>
-                            void updateStatus(
-                              listing.id,
-                              "draft",
-                              "Deactivate this listing? It will no longer appear in search results."
-                            )
-                          }
-                          disabled={isLoading}
-                          className="p-1.5 text-slate-400 hover:text-yellow-600"
-                          title="Deactivate"
-                        >
-                          <PauseCircle size={14} />
+                    <div className="flex items-center justify-between">
+                      <div className="flex gap-4 text-xs text-[#64748B]">
+                        <span className="flex items-center gap-1"><Eye size={11} /> {listing.views_count}</span>
+                        <span className="flex items-center gap-1"><Users size={11} /> {listing.leads_count}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Link href={`/listings/new?edit=${listingId}`} className="p-1.5 text-slate-400 hover:text-[#2563EB]" title="Edit">
+                          <Pencil size={14} />
+                        </Link>
+                        {listing.status === "active" && (
+                          <button onClick={() => void updateStatus(listingId, "draft", "Deactivate this listing?")} disabled={isLoading} className="p-1.5 text-slate-400 hover:text-yellow-600" title="Deactivate">
+                            <PauseCircle size={14} />
+                          </button>
+                        )}
+                        {listing.status === "draft" && (
+                          <button onClick={() => void updateStatus(listingId, "active")} disabled={isLoading} className="p-1.5 text-slate-400 hover:text-green-600" title="Activate">
+                            <CheckCircle size={14} />
+                          </button>
+                        )}
+                        {(listing.status === "sold" || listing.status === "expired") && (
+                          <button onClick={() => void updateStatus(listingId, "active")} disabled={isLoading} className="p-1.5 text-slate-400 hover:text-green-600" title="Reactivate">
+                            <CheckCircle size={14} />
+                          </button>
+                        )}
+                        {listing.status === "sold" && (
+                          <button onClick={() => setSaleDetailsId(showSaleDetails ? null : listingId)} className="p-1.5 text-slate-400 hover:text-[#2563EB]" title="Sale Details">
+                            <ClipboardList size={14} />
+                          </button>
+                        )}
+                        <button onClick={() => void deleteListing(listingId)} disabled={isLoading} className="p-1.5 text-slate-400 hover:text-red-500" title="Delete">
+                          <Trash2 size={14} />
                         </button>
-                      )}
-
-                      {listing.status === "draft" && (
-                        <button
-                          onClick={() => void updateStatus(listing.id, "active")}
-                          disabled={isLoading}
-                          className="p-1.5 text-slate-400 hover:text-green-600"
-                          title="Activate"
-                        >
-                          <CheckCircle size={14} />
-                        </button>
-                      )}
-
-                      {(listing.status === "sold" || listing.status === "expired") && (
-                        <button
-                          onClick={() => void updateStatus(listing.id, "active")}
-                          disabled={isLoading}
-                          className="p-1.5 text-slate-400 hover:text-green-600"
-                          title="Reactivate"
-                        >
-                          <CheckCircle size={14} />
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => void deleteListing(listing.id)}
-                        disabled={isLoading}
-                        className="p-1.5 text-slate-400 hover:text-red-500"
-                        title="Delete"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      </div>
                     </div>
                   </div>
+                  {showSaleDetails && (
+                    <SaleDetailsPanel
+                      listing={listing}
+                      onClose={() => setSaleDetailsId(null)}
+                      onSaved={handleSaleDetailsSaved}
+                    />
+                  )}
                 </div>
               );
             })}

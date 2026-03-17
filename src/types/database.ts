@@ -221,6 +221,12 @@ export type Database = {
           views_count: number;
           leads_count: number;
           published_at: string | null;
+          sale_price: number | null;
+          buyer_name: string | null;
+          buyer_email: string | null;
+          buyer_phone: string | null;
+          sale_notes: string | null;
+          sold_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -252,6 +258,12 @@ export type Database = {
           views_count?: number;
           leads_count?: number;
           published_at?: string | null;
+          sale_price?: number | null;
+          buyer_name?: string | null;
+          buyer_email?: string | null;
+          buyer_phone?: string | null;
+          sale_notes?: string | null;
+          sold_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -283,6 +295,12 @@ export type Database = {
           views_count?: number;
           leads_count?: number;
           published_at?: string | null;
+          sale_price?: number | null;
+          buyer_name?: string | null;
+          buyer_email?: string | null;
+          buyer_phone?: string | null;
+          sale_notes?: string | null;
+          sold_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };

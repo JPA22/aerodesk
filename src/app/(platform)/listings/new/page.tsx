@@ -98,7 +98,17 @@ export default function NewListingPage() {
       .order("name")
       .then(({ data, error }) => {
         if (error) console.error("[wizard] manufacturers fetch error:", error);
-        if (data) setManufacturers(data as unknown as Manufacturer[]);
+        if (data) {
+          setManufacturers(data as unknown as Manufacturer[]);
+          // Validate stored manufacturer_id — localStorage may hold a stale UUID
+          // from a previous session or a reset database.
+          const storedId = form.getValues("manufacturer_id");
+          if (storedId && !(data as unknown as Manufacturer[]).find((m) => m.id === storedId)) {
+            form.setValue("manufacturer_id", "" as never);
+            form.setValue("aircraft_model_id", undefined);
+            setModels([]);
+          }
+        }
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -140,7 +150,11 @@ export default function NewListingPage() {
   };
 
   const goBack = () => {
-    if (step > 1) navigate(step - 1);
+    if (step > 1) {
+      navigate(step - 1);
+    } else {
+      router.push("/dashboard/listings");
+    }
   };
 
   // ── Submit ──────────────────────────────────────────────────────────────────
@@ -333,8 +347,7 @@ export default function NewListingPage() {
           <button
             type="button"
             onClick={goBack}
-            disabled={step === 1}
-            className="flex items-center gap-1.5 text-[#64748B] hover:text-[#0F172A] disabled:opacity-30 font-medium text-sm transition-colors"
+            className="flex items-center gap-1.5 text-[#64748B] hover:text-[#0F172A] font-medium text-sm transition-colors"
           >
             <ChevronLeft size={18} />
             Back
