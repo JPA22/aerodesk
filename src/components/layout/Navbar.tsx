@@ -6,7 +6,8 @@ import { Menu, X, LayoutDashboard, LogOut } from "lucide-react";
 import { useAuth } from "@/components/providers/auth-provider";
 
 const navLinks = [
-  { label: "Browse Aircraft", href: "/browse" },
+  { label: "Browse Aircraft", href: "/search" },
+  { label: "Valuation", href: "/tools/valuation" },
   { label: "For Dealers", href: "/dealers" },
   { label: "About", href: "/about" },
 ];

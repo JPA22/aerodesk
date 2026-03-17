@@ -11,6 +11,8 @@ import { useAuth } from "@/components/providers/auth-provider";
 import ContactModal from "@/components/search/contact-modal";
 import ListingCard, { type ListingCardData } from "@/components/search/listing-card";
 import { formatPrice } from "@/lib/format";
+import { fmtVal, priceBadge, pricePosition, type ValuationResult } from "@/lib/valuation";
+import { BarChart3 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -219,6 +221,100 @@ function Spec({ label, value }: { label: string; value?: string | number | null 
     <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2.5 border-b border-slate-100 last:border-0 gap-1">
       <span className="text-sm text-[#64748B]">{label}</span>
       <span className="text-sm font-medium text-[#0F172A] sm:text-right">{value}</span>
+    </div>
+  );
+}
+
+// ── Valuation Card ────────────────────────────────────────────────────────────
+
+function ValuationCard({
+  listing,
+  modelName,
+  category,
+}: {
+  listing: ListingDetail;
+  modelName: string;
+  category: string;
+}) {
+  const [valuation, setValuation] = useState<ValuationResult | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/valuation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model_name: modelName,
+        category,
+        year: listing.year,
+        total_time_hours: listing.total_time_hours,
+        engine_time_smoh: listing.engine_time_smoh,
+        condition_rating: listing.condition_rating,
+        engine_program: listing.engine_program,
+      }),
+    })
+      .then((r) => r.json())
+      .then((data: ValuationResult) => setValuation(data))
+      .catch(() => null)
+      .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listing.id]);
+
+  if (loading) {
+    return (
+      <div className="mb-5 rounded-xl bg-slate-50 border border-slate-100 p-3 animate-pulse">
+        <div className="h-3 bg-slate-200 rounded w-1/2 mb-3" />
+        <div className="h-2 bg-slate-200 rounded mb-2" />
+        <div className="h-2 bg-slate-200 rounded w-3/4" />
+      </div>
+    );
+  }
+
+  if (!valuation) return null;
+
+  const showAskingBar = listing.asking_price > 0;
+  const pos = showAskingBar
+    ? pricePosition(listing.asking_price, valuation.low, valuation.high)
+    : null;
+  const badge = showAskingBar ? priceBadge(listing.asking_price, valuation.mid) : null;
+
+  return (
+    <div className="mb-5 rounded-xl bg-slate-50 border border-slate-100 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-1.5 text-xs font-bold text-[#0F172A]">
+          <BarChart3 size={13} className="text-[#2563EB]" />
+          AeroDesk Estimate
+        </div>
+        {badge && (
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>
+            {badge.label}
+          </span>
+        )}
+      </div>
+
+      {/* Value range numbers */}
+      <div className="flex justify-between text-xs mb-1.5">
+        <span className="text-[#64748B]">{fmtVal(valuation.low)}</span>
+        <span className="font-bold text-[#0F172A]">{fmtVal(valuation.mid)}</span>
+        <span className="text-[#64748B]">{fmtVal(valuation.high)}</span>
+      </div>
+
+      {/* Gradient bar */}
+      <div className="relative h-2 rounded-full overflow-visible mb-1">
+        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-slate-200 via-[#2563EB] to-slate-200" />
+        {pos !== null && (
+          <div
+            className="absolute top-1/2 w-3 h-3 rounded-full bg-white border-2 border-[#0F172A] shadow z-10"
+            style={{ left: `${pos}%`, transform: "translate(-50%, -50%)" }}
+          />
+        )}
+      </div>
+
+      <div className="flex justify-between text-[10px] text-[#94A3B8] mt-1">
+        <span>Low</span>
+        <span>Mid</span>
+        <span>High</span>
+      </div>
     </div>
   );
 }
@@ -481,6 +577,13 @@ export default function ListingDetailClient({
                   </div>
                 )}
               </div>
+
+              {/* AeroDesk Estimate */}
+              <ValuationCard
+                listing={listing}
+                modelName={model.name}
+                category={model.category}
+              />
 
               {/* CTA buttons */}
               <div className="space-y-3">
