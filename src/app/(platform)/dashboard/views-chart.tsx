@@ -15,6 +15,7 @@ import {
 interface ChartListing {
   id: string;
   title: string;
+  shortLabel: string;
   views_count: number;
   leads_count: number;
 }
@@ -69,6 +70,7 @@ export default function ViewsChart({ listings }: ViewsChartProps) {
 
   const data = listings.map((l) => ({
     id: l.id,
+    name: l.shortLabel,
     title: l.title,
     views: l.views_count,
     leads: l.leads_count,
@@ -92,8 +94,8 @@ export default function ViewsChart({ listings }: ViewsChartProps) {
     );
   }
 
-  // Compute bottom margin based on longest title so angled labels fit
-  const maxLen = Math.max(...data.map((d) => d.title.length));
+  // Compute bottom margin based on longest label so angled labels fit
+  const maxLen = Math.max(...data.map((d) => d.name.length));
   const bottomMargin = Math.min(Math.round(maxLen * 3.5), 100);
 
   return (
@@ -104,7 +106,7 @@ export default function ViewsChart({ listings }: ViewsChartProps) {
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
         <XAxis
-          dataKey="title"
+          dataKey="name"
           tick={{ fontSize: 10, fill: "#94A3B8" }}
           tickLine={false}
           axisLine={false}

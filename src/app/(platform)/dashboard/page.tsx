@@ -12,6 +12,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import ViewsChart from "./views-chart";
+import SalesChart from "./sales-chart";
 
 const contactIcon = {
   email: Mail,
@@ -36,9 +37,23 @@ export default async function DashboardPage() {
     supabase.from("profiles").select("full_name, role").eq("id", user!.id).single(),
     supabase
       .from("aircraft_listings")
-      .select("id, title, status, views_count, leads_count")
+      .select(
+        `id, title, year, status, views_count, leads_count,
+         asking_price, currency, sale_price, sold_at, created_at,
+         model:aircraft_models(name)`
+      )
       .eq("seller_id", user!.id),
   ]);
+
+  type ListingRow = NonNullable<typeof listingsData>[number];
+
+  const shortLabel = (l: ListingRow) => {
+    const modelName = (l.model as { name: string } | null)?.name;
+    if (modelName) return `${l.year} ${modelName}`;
+    // Fallback: strip the manufacturer word (word 2) from the title
+    const parts = l.title.split(" ");
+    return parts.length >= 3 ? `${parts[0]} ${parts.slice(2).join(" ")}` : l.title;
+  };
 
   const listingIds = listingsData?.map((l) => l.id) ?? [];
   const totalListings = listingsData?.length ?? 0;
@@ -75,6 +90,27 @@ export default async function DashboardPage() {
   }
 
   const firstName = profile?.full_name?.split(" ")[0] ?? "there";
+
+  const viewsListings = (listingsData ?? []).map((l) => ({
+    id: l.id,
+    title: l.title,
+    shortLabel: shortLabel(l),
+    views_count: l.views_count ?? 0,
+    leads_count: l.leads_count ?? 0,
+  }));
+
+  const soldListings = (listingsData ?? [])
+    .filter((l) => l.status === "sold")
+    .map((l) => ({
+      id: l.id,
+      title: l.title,
+      shortLabel: shortLabel(l),
+      asking_price: l.asking_price,
+      currency: l.currency,
+      sale_price: l.sale_price as number | null,
+      sold_at: l.sold_at as string | null,
+      created_at: l.created_at,
+    }));
 
   const stats = [
     {
@@ -163,14 +199,7 @@ export default async function DashboardPage() {
               </p>
             </div>
           </div>
-          <ViewsChart
-            listings={(listingsData ?? []).map((l) => ({
-              id: l.id,
-              title: l.title,
-              views_count: l.views_count ?? 0,
-              leads_count: l.leads_count ?? 0,
-            }))}
-          />
+          <ViewsChart listings={viewsListings} />
         </div>
 
         {/* Quick actions */}
@@ -205,6 +234,27 @@ export default async function DashboardPage() {
             </span>
           </div>
         </div>
+      </div>
+
+      {/* Sales Overview Chart */}
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-6">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="font-semibold text-[#0F172A]">Sales Overview</h3>
+            <p className="text-xs text-[#64748B] mt-0.5">
+              {soldListings.length === 0
+                ? "No sold listings yet"
+                : `${soldListings.length} aircraft sold`}
+            </p>
+          </div>
+          <Link
+            href="/dashboard/listings?tab=sold"
+            className="text-xs text-[#2563EB] font-medium hover:underline"
+          >
+            View sold →
+          </Link>
+        </div>
+        <SalesChart listings={soldListings} />
       </div>
 
       {/* Recent leads */}
