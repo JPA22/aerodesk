@@ -9,8 +9,32 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "AeroDesk — Pre-Owned Aircraft Marketplace",
-  description: "Buy and sell pre-owned aircraft in Brazil and Latin America.",
+  title: {
+    default: "AeroDesk — The Modern Marketplace for Pre-Owned Aircraft",
+    template: "%s | AeroDesk",
+  },
+  description:
+    "Buy and sell aircraft with confidence. AI-powered valuations, 160+ models, verified dealers. Browse jets, turboprops, pistons, and helicopters.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://aerodesk.com.br"),
+  openGraph: {
+    type: "website",
+    siteName: "AeroDesk",
+    title: "AeroDesk — The Modern Marketplace for Pre-Owned Aircraft",
+    description:
+      "Buy and sell aircraft with confidence. AI-powered valuations, 160+ models, verified dealers.",
+    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AeroDesk — The Modern Marketplace for Pre-Owned Aircraft",
+    description:
+      "Buy and sell aircraft with confidence. AI-powered valuations, 160+ models, verified dealers.",
+    images: ["/og-image.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
@@ -21,8 +45,8 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={inter.className}>
       <body className="antialiased">
-          <AuthProvider>{children}</AuthProvider>
-        </body>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }
