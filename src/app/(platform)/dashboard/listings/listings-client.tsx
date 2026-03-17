@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { Fragment, useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -17,6 +17,7 @@ import {
   Save,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { formatPrice } from "@/lib/format";
 import type { ListingStatus } from "@/types/database";
 
 interface ListingImage {
@@ -71,6 +72,8 @@ const inputCls =
   "w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 focus:border-[#2563EB] transition-colors";
 
 function SaleDetailsPanel({ listing, onClose, onSaved }: SaleDetailsProps) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
   const [buyerName, setBuyerName] = useState(listing.buyer_name ?? "");
   const [buyerEmail, setBuyerEmail] = useState(listing.buyer_email ?? "");
   const [buyerPhone, setBuyerPhone] = useState(listing.buyer_phone ?? "");
@@ -82,26 +85,37 @@ function SaleDetailsPanel({ listing, onClose, onSaved }: SaleDetailsProps) {
   async function save() {
     setSaving(true);
     setError(null);
-    const supabase = createClient();
-    const payload = {
-      buyer_name: buyerName || null,
-      buyer_email: buyerEmail || null,
-      buyer_phone: buyerPhone || null,
-      sale_price: salePrice ? parseFloat(salePrice) : null,
-      sale_notes: saleNotes || null,
-      sold_at: listing.sold_at ?? new Date().toISOString(),
-    };
-    const { error: err } = await supabase
-      .from("aircraft_listings")
-      .update(payload)
-      .eq("id", listing.id);
-    setSaving(false);
-    if (err) {
-      setError(err.message);
-      return;
+    try {
+      const supabase = createClient();
+      const payload = {
+        buyer_name: buyerName || null,
+        buyer_email: buyerEmail || null,
+        buyer_phone: buyerPhone || null,
+        sale_price: salePrice ? parseFloat(salePrice) : null,
+        sale_notes: saleNotes || null,
+        sold_at: listing.sold_at ?? new Date().toISOString(),
+      };
+      const { data, error: err } = await supabase
+        .from("aircraft_listings")
+        .update(payload)
+        .eq("id", listing.id)
+        .select("id");
+      if (err) {
+        setError(`Save failed: ${err.message}`);
+        return;
+      }
+      if (!data?.length) {
+        setError("Save failed: permission denied. Please re-login and try again.");
+        return;
+      }
+      onSaved(listing.id, payload);
+      startTransition(() => router.refresh());
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unexpected error. Please try again.");
+    } finally {
+      setSaving(false);
     }
-    onSaved(listing.id, payload);
-    onClose();
   }
 
   return (
@@ -139,7 +153,7 @@ function SaleDetailsPanel({ listing, onClose, onSaved }: SaleDetailsProps) {
             type="tel"
             value={buyerPhone}
             onChange={(e) => setBuyerPhone(e.target.value)}
-            placeholder="+1 (555) 000-0000"
+            placeholder="e.g. +55 (11) 99963-2204"
             className={inputCls}
           />
         </div>
@@ -230,16 +244,21 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
     );
 
     const supabase = createClient();
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("aircraft_listings")
       .update(payload)
-      .eq("id", listingId);
+      .eq("id", listingId)
+      .select("id");
 
     setLoadingId(null);
     if (error) {
-      // Roll back optimistic update
       setLocalListings(listings);
       setErrorMsg(`Failed to update listing: ${error.message}`);
+      return;
+    }
+    if (!data?.length) {
+      setLocalListings(listings);
+      setErrorMsg("Update failed: permission denied. Please re-login and try again.");
       return;
     }
     startTransition(() => router.refresh());
@@ -363,9 +382,8 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                   const showSaleDetails = saleDetailsId === listingId;
 
                   return (
-                    <>
+                    <Fragment key={listingId}>
                       <tr
-                        key={listingId}
                         className={`hover:bg-slate-50 transition-colors ${isLoading ? "opacity-50 pointer-events-none" : ""}`}
                       >
                         <td className="px-4 py-3">
@@ -392,7 +410,7 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-[#0F172A] font-medium">
-                          {listing.currency} {listing.asking_price.toLocaleString()}
+                          {formatPrice(listing.asking_price, listing.currency)}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${sc.cls}`}>
@@ -481,7 +499,7 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                       </tr>
 
                       {showSaleDetails && (
-                        <tr key={`${listingId}-sale`}>
+                        <tr>
                           <td colSpan={7} className="p-0">
                             <SaleDetailsPanel
                               listing={listing}
@@ -491,7 +509,7 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   );
                 })}
               </tbody>
@@ -531,7 +549,7 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                           {listing.title}
                         </Link>
                         <p className="text-[#2563EB] font-semibold text-sm mt-0.5">
-                          {listing.currency} {listing.asking_price.toLocaleString()}
+                          {formatPrice(listing.asking_price, listing.currency)}
                         </p>
                       </div>
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full h-fit ${sc.cls}`}>

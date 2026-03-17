@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
 import ContactModal from "@/components/search/contact-modal";
 import ListingCard, { type ListingCardData } from "@/components/search/listing-card";
+import { formatPrice } from "@/lib/format";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -245,11 +246,7 @@ export default function ListingDetailClient({
   };
 
   const model = listing.aircraft_models;
-  const sym = CURRENCY_SYMBOL[listing.currency] ?? "$";
-  const priceDisplay =
-    listing.asking_price === 0
-      ? "Price on Request"
-      : `${sym} ${listing.asking_price.toLocaleString("en-US")}`;
+  const priceDisplay = formatPrice(listing.asking_price, listing.currency);
 
   const location = [listing.location_city, listing.location_state, listing.location_country]
     .filter(Boolean)
@@ -274,17 +271,26 @@ export default function ListingDetailClient({
       return;
     }
     if (isSaved) {
-      await supabase
+      const { error } = await supabase
         .from("saved_listings")
         .delete()
         .eq("user_id", user.id)
         .eq("listing_id", listing.id);
+      if (error) {
+        showToast("Failed to unsave. Please try again.");
+        return;
+      }
       setIsSaved(false);
     } else {
-      await supabase
+      const { error } = await supabase
         .from("saved_listings")
         .insert({ user_id: user.id, listing_id: listing.id });
+      if (error) {
+        showToast("Failed to save. Please try again.");
+        return;
+      }
       setIsSaved(true);
+      showToast("Aircraft saved to your list.");
     }
   };
 

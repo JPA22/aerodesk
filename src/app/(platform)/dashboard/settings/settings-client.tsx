@@ -162,7 +162,7 @@ export default function SettingsClient({
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="+55 (11) 99999-9999"
+                placeholder="e.g. +55 (11) 99963-2204"
                 className={inputCls}
               />
             </Field>

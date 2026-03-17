@@ -7,6 +7,7 @@ import { MapPin, Clock, Heart, Star } from "lucide-react";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
+import { formatPrice } from "@/lib/format";
 
 // ── Shared type (used by search page + detail page similar listings) ──────────
 
@@ -73,11 +74,7 @@ export default function ListingCard({
     listing.listing_images.find((i) => i.is_primary)?.image_url ??
     listing.listing_images.sort((a, b) => a.display_order - b.display_order)[0]?.image_url;
 
-  const sym = CURRENCY_SYMBOL[listing.currency] ?? "$";
-  const priceDisplay =
-    listing.asking_price === 0
-      ? "Price on Request"
-      : `${sym} ${listing.asking_price.toLocaleString("en-US")}`;
+  const priceDisplay = formatPrice(listing.asking_price, listing.currency);
 
   const location = [listing.location_city, listing.location_state, listing.location_country]
     .filter(Boolean)

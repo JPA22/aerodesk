@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Heart, Plane, MapPin, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { formatPrice } from "@/lib/format";
 
 interface ListingImage {
   image_url: string;
@@ -37,21 +38,34 @@ function getImage(images: ListingImage[]): string | null {
 export default function SavedClient({ saved }: { saved: SavedItem[] }) {
   const router = useRouter();
   const [removing, setRemoving] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   async function removeSaved(listingId: string) {
     setRemoving(listingId);
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase
+    setErrorMsg(null);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setErrorMsg("Not authenticated. Please sign in again.");
+        return;
+      }
+      const { error } = await supabase
         .from("saved_listings")
         .delete()
         .eq("user_id", user.id)
         .eq("listing_id", listingId);
+      if (error) {
+        setErrorMsg(`Failed to remove: ${error.message}`);
+        return;
+      }
+      startTransition(() => router.refresh());
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : "Unexpected error.");
+    } finally {
+      setRemoving(null);
     }
-    setRemoving(null);
-    startTransition(() => router.refresh());
   }
 
   return (
@@ -62,6 +76,13 @@ export default function SavedClient({ saved }: { saved: SavedItem[] }) {
           Aircraft you&apos;ve saved for later
         </p>
       </div>
+
+      {errorMsg && (
+        <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 flex items-center justify-between">
+          <span>{errorMsg}</span>
+          <button onClick={() => setErrorMsg(null)}><X size={16} /></button>
+        </div>
+      )}
 
       {saved.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-12 flex flex-col items-center text-center">
@@ -132,7 +153,7 @@ export default function SavedClient({ saved }: { saved: SavedItem[] }) {
                     {listing.title}
                   </Link>
                   <p className="text-[#2563EB] font-bold text-base mb-2">
-                    {listing.currency} {listing.asking_price.toLocaleString()}
+                    {formatPrice(listing.asking_price, listing.currency)}
                   </p>
                   <div className="flex items-center justify-between text-xs text-[#64748B]">
                     <span>{listing.year}</span>
