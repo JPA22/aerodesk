@@ -90,8 +90,8 @@ export default function ValuationClient({ manufacturers }: { manufacturers: Manu
   const [modelId, setModelId] = useState<string>("");
   const [models, setModels] = useState<AircraftModel[]>([]);
   const [year, setYear] = useState<string>("");
-  const [totalTime, setTotalTime] = useState<string>("");
-  const [engineTime, setEngineTime] = useState<string>("");
+  const [totalTimeRaw, setTotalTimeRaw] = useState<string>("");
+  const [engineTimeRaw, setEngineTimeRaw] = useState<string>("");
   const [condition, setCondition] = useState<number>(7);
   const [engineProgram, setEngineProgram] = useState<string>("na");
 
@@ -121,6 +121,14 @@ export default function ValuationClient({ manufacturers }: { manufacturers: Manu
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [manufacturerId, category]);
 
+  // Formatted display values
+  const totalTimeDisplay = totalTimeRaw
+    ? Number(totalTimeRaw).toLocaleString("en-US")
+    : "";
+  const engineTimeDisplay = engineTimeRaw
+    ? Number(engineTimeRaw).toLocaleString("en-US")
+    : "";
+
   const selectedModel = models.find((m) => m.id === modelId);
   const canSubmit = category && manufacturerId && (modelId || true) && year && Number(year) > 1950;
 
@@ -137,8 +145,8 @@ export default function ValuationClient({ manufacturers }: { manufacturers: Manu
           model_name: selectedModel?.name ?? "",
           category,
           year: Number(year),
-          total_time_hours: totalTime ? Number(totalTime) : null,
-          engine_time_smoh: engineTime ? Number(engineTime) : null,
+          total_time_hours: totalTimeRaw ? Number(totalTimeRaw) : null,
+          engine_time_smoh: engineTimeRaw ? Number(engineTimeRaw) : null,
           condition_rating: condition,
           engine_program: engineProgram,
         }),
@@ -267,11 +275,11 @@ export default function ValuationClient({ manufacturers }: { manufacturers: Manu
                 Total Time (hrs)
               </label>
               <input
-                type="number"
-                value={totalTime}
-                onChange={(e) => setTotalTime(e.target.value)}
-                placeholder="e.g. 1500"
-                min={0}
+                type="text"
+                inputMode="numeric"
+                value={totalTimeDisplay}
+                onChange={(e) => setTotalTimeRaw(e.target.value.replace(/[^0-9]/g, ""))}
+                placeholder="e.g. 1,500"
                 className={inputCls}
               />
             </div>
@@ -280,11 +288,11 @@ export default function ValuationClient({ manufacturers }: { manufacturers: Manu
                 Engine SMOH (hrs)
               </label>
               <input
-                type="number"
-                value={engineTime}
-                onChange={(e) => setEngineTime(e.target.value)}
+                type="text"
+                inputMode="numeric"
+                value={engineTimeDisplay}
+                onChange={(e) => setEngineTimeRaw(e.target.value.replace(/[^0-9]/g, ""))}
                 placeholder="e.g. 800"
-                min={0}
                 className={inputCls}
               />
             </div>

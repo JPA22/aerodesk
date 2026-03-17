@@ -1,5 +1,6 @@
 "use client";
 
+import { useController } from "react-hook-form";
 import type { WizardForm } from "./types";
 
 interface Props {
@@ -10,6 +11,47 @@ const inputClass =
   "w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-[#0F172A] bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent";
 
 const labelClass = "block text-sm font-semibold text-[#0F172A] mb-1.5";
+
+/** Controlled number-with-commas input backed by a RHF field (stores raw number). */
+function HoursInput({
+  form,
+  name,
+  placeholder,
+}: {
+  form: WizardForm;
+  name: "total_time_hours" | "engine_time_smoh";
+  placeholder: string;
+}) {
+  const { field } = useController({ name, control: form.control });
+
+  const display =
+    field.value != null && field.value !== ""
+      ? Number(String(field.value).replace(/[^0-9]/g, "")).toLocaleString("en-US")
+      : "";
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const digits = e.target.value.replace(/[^0-9]/g, "");
+    field.onChange(digits === "" ? "" : digits);
+  }
+
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        inputMode="numeric"
+        value={display}
+        onChange={handleChange}
+        onBlur={field.onBlur}
+        ref={field.ref}
+        placeholder={placeholder}
+        className={inputClass + " pr-12"}
+      />
+      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-medium">
+        hrs
+      </span>
+    </div>
+  );
+}
 
 export default function Step2AircraftDetails({ form }: Props) {
   const { register, formState: { errors } } = form;
@@ -65,33 +107,11 @@ export default function Step2AircraftDetails({ form }: Props) {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Total Time (TT)</label>
-          <div className="relative">
-            <input
-              type="number"
-              min={0}
-              placeholder="0"
-              {...register("total_time_hours")}
-              className={inputClass + " pr-12"}
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-medium">
-              hrs
-            </span>
-          </div>
+          <HoursInput form={form} name="total_time_hours" placeholder="e.g. 1,200" />
         </div>
         <div>
           <label className={labelClass}>Engine SMOH</label>
-          <div className="relative">
-            <input
-              type="number"
-              min={0}
-              placeholder="0"
-              {...register("engine_time_smoh")}
-              className={inputClass + " pr-12"}
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-medium">
-              hrs
-            </span>
-          </div>
+          <HoursInput form={form} name="engine_time_smoh" placeholder="e.g. 800" />
         </div>
       </div>
 
