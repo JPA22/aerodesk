@@ -1,7 +1,6 @@
 const en = {
   // Language selector
-  lang: { code: "en", label: "English", flag: "🇺🇸" },
-
+lang: { code: "en", label: "English", flag: "🇺🇸" },
   // Navbar
   nav: {
     browse: "Browse Aircraft",
@@ -340,7 +339,7 @@ const en = {
     comingSoonMsg: "{feature} will be available soon!",
     back: "Back",
   },
-} as const;
+};
 
 export type TranslationKeys = typeof en;
 export default en;
