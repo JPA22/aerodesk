@@ -6,6 +6,7 @@ import { SlidersHorizontal, X, ChevronDown, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Manufacturer } from "@/types/database";
 import ListingCard, { type ListingCardData } from "@/components/search/listing-card";
+import { useTranslation } from "@/components/providers/language-provider";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -15,24 +16,7 @@ const MAX_YEAR = 2026;
 const MAX_PRICE = 50_000_000;
 const PRICE_STEP = 50_000;
 
-const CATEGORIES = [
-  { value: "jet", label: "Jets" },
-  { value: "turboprop", label: "Turboprops" },
-  { value: "piston", label: "Pistons" },
-  { value: "helicopter", label: "Helicopters" },
-];
-
-const COUNTRIES = [
-  "Brazil", "United States", "Argentina", "Chile", "Colombia",
-  "Mexico", "Panama", "Paraguay", "Peru", "Uruguay", "Other",
-];
-
-const SORT_OPTIONS = [
-  { value: "newest", label: "Newest first" },
-  { value: "price_asc", label: "Price: low to high" },
-  { value: "price_desc", label: "Price: high to low" },
-  { value: "hours_asc", label: "Lowest hours" },
-];
+// Categories and sort options are now inside components to use translations
 
 // ── Dual-range slider ─────────────────────────────────────────────────────────
 
@@ -97,8 +81,21 @@ function Filters({
   onChange: (key: string, value: string | null) => void;
   onClear: () => void;
 }) {
+  const { t } = useTranslation();
   const [mfgSearch, setMfgSearch] = useState("");
   const [mfgOpen, setMfgOpen] = useState(false);
+
+  const CATEGORIES = [
+    { value: "jet", label: t.hero.jets },
+    { value: "turboprop", label: t.hero.turboprops },
+    { value: "piston", label: t.hero.pistons },
+    { value: "helicopter", label: t.hero.helicopters },
+  ];
+
+  const COUNTRIES = [
+    "Brazil", "United States", "Argentina", "Chile", "Colombia",
+    "Mexico", "Panama", "Paraguay", "Peru", "Uruguay",
+  ];
 
   const selectedCats = params.getAll("category");
   const selectedMfgs = params.getAll("manufacturer");
@@ -136,20 +133,20 @@ function Filters({
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="font-bold text-[#0F172A]">Filters</h2>
+        <h2 className="font-bold text-[#0F172A]">{t.search.filters}</h2>
         {hasFilters && (
           <button
             onClick={onClear}
             className="text-xs text-[#2563EB] font-medium hover:underline flex items-center gap-1"
           >
-            <X size={12} /> Clear all
+            <X size={12} /> {t.search.clearAll}
           </button>
         )}
       </div>
 
       {/* Category */}
       <div>
-        <p className="text-xs font-bold text-[#0F172A] uppercase tracking-wider mb-3">Category</p>
+        <p className="text-xs font-bold text-[#0F172A] uppercase tracking-wider mb-3">{t.search.category}</p>
         <div className="space-y-2">
           {CATEGORIES.map(({ value, label }) => (
             <label key={value} className="flex items-center gap-2.5 cursor-pointer group">
@@ -169,7 +166,7 @@ function Filters({
 
       {/* Manufacturer */}
       <div>
-        <p className="text-xs font-bold text-[#0F172A] uppercase tracking-wider mb-3">Manufacturer</p>
+        <p className="text-xs font-bold text-[#0F172A] uppercase tracking-wider mb-3">{t.search.manufacturer}</p>
         <div className="relative">
           <button
             onClick={() => setMfgOpen((o) => !o)}
@@ -177,8 +174,8 @@ function Filters({
           >
             <span>
               {selectedMfgs.length > 0
-                ? `${selectedMfgs.length} selected`
-                : "All manufacturers"}
+                ? `${selectedMfgs.length} ${t.search.selected}`
+                : t.search.allManufacturers}
             </span>
             <ChevronDown size={14} className={`transition-transform ${mfgOpen ? "rotate-180" : ""}`} />
           </button>
@@ -190,7 +187,7 @@ function Filters({
                   <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
-                    placeholder="Search manufacturers…"
+                    placeholder={t.search.searchManufacturers}
                     value={mfgSearch}
                     onChange={(e) => setMfgSearch(e.target.value)}
                     className="w-full pl-7 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
@@ -240,7 +237,7 @@ function Filters({
 
       {/* Price range */}
       <div>
-        <p className="text-xs font-bold text-[#0F172A] uppercase tracking-wider mb-2">Price range</p>
+        <p className="text-xs font-bold text-[#0F172A] uppercase tracking-wider mb-2">{t.search.priceRange}</p>
         <DualSlider
           min={0} max={MAX_PRICE} step={PRICE_STEP}
           value={[priceMin, priceMax]}
@@ -254,7 +251,7 @@ function Filters({
 
       {/* Year range */}
       <div>
-        <p className="text-xs font-bold text-[#0F172A] uppercase tracking-wider mb-2">Year</p>
+        <p className="text-xs font-bold text-[#0F172A] uppercase tracking-wider mb-2">{t.search.yearRange}</p>
         <DualSlider
           min={MIN_YEAR} max={MAX_YEAR} step={1}
           value={[yearMin, yearMax]}
@@ -267,7 +264,7 @@ function Filters({
 
       {/* Max TT hours */}
       <div>
-        <p className="text-xs font-bold text-[#0F172A] uppercase tracking-wider mb-2">Max total time</p>
+        <p className="text-xs font-bold text-[#0F172A] uppercase tracking-wider mb-2">{t.search.maxTotalTime}</p>
         <div className="relative">
           <input
             type="number"
@@ -277,19 +274,19 @@ function Filters({
             onChange={(e) => onChange("maxHours", e.target.value || null)}
             className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
           />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">hrs</span>
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">{t.search.hrs}</span>
         </div>
       </div>
 
       {/* Country */}
       <div>
-        <p className="text-xs font-bold text-[#0F172A] uppercase tracking-wider mb-2">Country</p>
+        <p className="text-xs font-bold text-[#0F172A] uppercase tracking-wider mb-2">{t.search.country}</p>
         <select
           value={country}
           onChange={(e) => onChange("country", e.target.value || null)}
           className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
         >
-          <option value="">All countries</option>
+          <option value="">{t.search.allCountries}</option>
           {COUNTRIES.map((c) => (
             <option key={c} value={c}>{c}</option>
           ))}
@@ -298,7 +295,7 @@ function Filters({
 
       {/* Engine program */}
       <div>
-        <p className="text-xs font-bold text-[#0F172A] uppercase tracking-wider mb-3">Engine program</p>
+        <p className="text-xs font-bold text-[#0F172A] uppercase tracking-wider mb-3">{t.search.engineProgram}</p>
         <div className="space-y-2">
           {["enrolled", "not_enrolled"].map((v) => (
             <label key={v} className="flex items-center gap-2.5 cursor-pointer group">
@@ -309,7 +306,7 @@ function Filters({
                 className="w-4 h-4 rounded border-slate-300 accent-[#2563EB]"
               />
               <span className="text-sm text-[#0F172A] group-hover:text-[#2563EB] transition-colors">
-                {v === "enrolled" ? "Enrolled" : "Not enrolled"}
+                {v === "enrolled" ? t.search.enrolled : t.search.notEnrolled}
               </span>
             </label>
           ))}
@@ -324,6 +321,14 @@ function Filters({
 function SearchContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useTranslation();
+
+  const SORT_OPTIONS = [
+    { value: "newest", label: t.search.newestFirst },
+    { value: "price_asc", label: t.search.priceLowHigh },
+    { value: "price_desc", label: t.search.priceHighLow },
+    { value: "hours_asc", label: t.search.lowestHours },
+  ];
 
   const [listings, setListings] = useState<ListingCardData[]>([]);
   const [total, setTotal] = useState(0);
@@ -384,7 +389,20 @@ function SearchContent() {
 
       // Nested filters (PostgREST !inner syntax)
       if (cats.length === 1) q = q.eq("aircraft_models.category", cats[0] as never);
-      if (mfgs.length === 1) q = q.eq("aircraft_models.manufacturer_id", mfgs[0]);
+      if (mfgs.length === 1) {
+        // Hero passes manufacturer name (e.g. "Cessna"), sidebar passes UUID — handle both
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(mfgs[0]);
+        if (isUUID) {
+          q = q.eq("aircraft_models.manufacturer_id", mfgs[0]);
+        } else {
+          // Resolve name to ID from loaded manufacturers
+          const match = manufacturers.find((m) => m.name.toLowerCase() === mfgs[0].toLowerCase());
+          if (match) {
+            q = q.eq("aircraft_models.manufacturer_id", match.id);
+          }
+          // If no match found, skip filter (shows all results instead of crashing)
+        }
+      }
 
       // Sort
       if (sort === "price_asc") q = q.order("asking_price", { ascending: true });
@@ -395,7 +413,7 @@ function SearchContent() {
       q = q.range(offset, offset + PAGE_SIZE - 1);
       return q;
     },
-    [searchParams, supabase]
+    [searchParams, supabase, manufacturers]
   );
 
   // Fetch on param change — use AbortController to cancel in-flight requests
@@ -478,13 +496,13 @@ function SearchContent() {
               className="lg:hidden flex items-center gap-2 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium text-[#0F172A] hover:border-slate-300 bg-white"
             >
               <SlidersHorizontal size={15} />
-              Filters
+              {t.search.filters}
             </button>
             <p className="text-sm text-[#64748B]">
               {loading ? (
-                <span className="animate-pulse">Searching…</span>
+                <span className="animate-pulse">{t.search.searching}</span>
               ) : (
-                <><strong className="text-[#0F172A]">{total.toLocaleString()}</strong> aircraft found</>
+                <><strong className="text-[#0F172A]">{total.toLocaleString()}</strong> {t.search.aircraftFound}</>
               )}
             </p>
           </div>
@@ -527,13 +545,13 @@ function SearchContent() {
             ) : listings.length === 0 ? (
               <div className="text-center py-24">
                 <p className="text-4xl mb-4">✈️</p>
-                <h3 className="text-lg font-bold text-[#0F172A] mb-2">No aircraft found</h3>
-                <p className="text-[#64748B] text-sm mb-6">Try adjusting your filters.</p>
+                <h3 className="text-lg font-bold text-[#0F172A] mb-2">{t.search.noResults}</h3>
+                <p className="text-[#64748B] text-sm mb-6">{t.search.noResultsSub}</p>
                 <button
                   onClick={clearAll}
                   className="bg-[#2563EB] text-white font-semibold px-6 py-2.5 rounded-xl hover:bg-[#3B82F6] transition-colors text-sm"
                 >
-                  Clear filters
+                  {t.search.clearFilters}
                 </button>
               </div>
             ) : (
@@ -562,7 +580,7 @@ function SearchContent() {
                       disabled={loadingMore}
                       className="border-2 border-slate-200 hover:border-[#2563EB] text-[#0F172A] font-semibold px-8 py-3 rounded-xl transition-colors text-sm disabled:opacity-50"
                     >
-                      {loadingMore ? "Loading…" : `Load more (${total - listings.length} remaining)`}
+                      {loadingMore ? t.search.loading : `${t.search.loadMore} (${total - listings.length} ${t.search.remaining})`}
                     </button>
                   </div>
                 )}
@@ -578,7 +596,7 @@ function SearchContent() {
           <div className="absolute inset-0 bg-black/40" onClick={() => setMobileFiltersOpen(false)} />
           <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-[85vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-slate-100 px-5 py-4 flex items-center justify-between">
-              <h2 className="font-bold text-[#0F172A]">Filters</h2>
+              <h2 className="font-bold text-[#0F172A]">{t.search.filters}</h2>
               <button onClick={() => setMobileFiltersOpen(false)} className="text-[#64748B]">
                 <X size={20} />
               </button>
@@ -594,7 +612,7 @@ function SearchContent() {
                 onClick={() => setMobileFiltersOpen(false)}
                 className="mt-6 w-full bg-[#2563EB] text-white font-semibold py-3 rounded-xl hover:bg-[#3B82F6] transition-colors"
               >
-                Show {total} results
+                {t.search.showResults.replace("{count}", String(total))}
               </button>
             </div>
           </div>

@@ -13,6 +13,7 @@ import ListingCard, { type ListingCardData } from "@/components/search/listing-c
 import { formatPrice } from "@/lib/format";
 import { fmtVal, priceBadge, pricePosition, type ValuationResult } from "@/lib/valuation";
 import { BarChart3 } from "lucide-react";
+import { useTranslation } from "@/components/providers/language-provider";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -52,26 +53,7 @@ type ListingDetail = {
 
 const CURRENCY_SYMBOL: Record<string, string> = { USD: "$", BRL: "R$", EUR: "€" };
 
-const ENGINE_LABEL: Record<string, string> = {
-  enrolled: "Enrolled", not_enrolled: "Not enrolled", na: "N/A",
-};
-
-const MAINTENANCE_LABEL: Record<string, string> = {
-  annual_current: "Annual current",
-  inspection_due_3mo: "Due within 3 months",
-  inspection_due_6mo: "Due within 6 months",
-  needs_inspection: "Needs inspection",
-  fresh_overhaul: "Just completed major overhaul",
-};
-
-const CONDITION_LABEL: Record<number, string> = {
-  1: "Project", 2: "Poor", 3: "Fair", 4: "Below Average", 5: "Good",
-  6: "Very Good", 7: "Above Average", 8: "Excellent", 9: "Show Quality", 10: "Like New",
-};
-
-const GALLEY_LABEL: Record<string, string> = {
-  none: "No galley", forward: "Forward", aft: "Aft", both: "Forward & aft",
-};
+// Label maps are now inside the component to use translations
 
 // ── Image Gallery ─────────────────────────────────────────────────────────────
 
@@ -107,7 +89,7 @@ function ImageGallery({ images }: { images: Image[] }) {
         <svg className="w-24 h-24 text-white/20" fill="currentColor" viewBox="0 0 64 64">
           <path d="M56 24l-12 4-14-18H24l6 18-12 4-6-6H8l4 10-4 10h4l6-6 12 4-6 18h6l14-18 12 4c4 0 8-2 8-6s-4-6-8-8z" />
         </svg>
-        <p className="absolute bottom-4 text-white/50 text-sm">No photos available</p>
+        <p className="absolute bottom-4 text-white/50 text-sm">{/* No photos */}</p>
       </div>
     );
   }
@@ -238,6 +220,7 @@ function ValuationCard({
 }) {
   const [valuation, setValuation] = useState<ValuationResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
 
   useEffect(() => {
     fetch("/api/valuation", {
@@ -283,7 +266,7 @@ function ValuationCard({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1.5 text-xs font-bold text-[#0F172A]">
           <BarChart3 size={13} className="text-[#2563EB]" />
-          AeroDesk Estimate
+          {t.listing.aerodeskEstimate}
         </div>
         {badge && (
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>
@@ -311,9 +294,9 @@ function ValuationCard({
       </div>
 
       <div className="flex justify-between text-[10px] text-[#94A3B8] mt-1">
-        <span>Low</span>
+        <span>{t.valuation.low}</span>
         <span>Mid</span>
-        <span>High</span>
+        <span>{t.valuation.high}</span>
       </div>
     </div>
   );
@@ -331,10 +314,28 @@ export default function ListingDetailClient({
   const { user } = useAuth();
   const router = useRouter();
   const supabase = createClient();
+  const { t } = useTranslation();
   const [contactOpen, setContactOpen] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [copied, setCopied] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  const ENGINE_LABEL: Record<string, string> = {
+    enrolled: t.listing.enrolled, not_enrolled: t.listing.notEnrolled, na: t.listing.engineNA,
+  };
+  const MAINTENANCE_LABEL: Record<string, string> = {
+    annual_current: t.listing.maintAnnualCurrent, inspection_due_3mo: t.listing.maintDue3mo,
+    inspection_due_6mo: t.listing.maintDue6mo, needs_inspection: t.listing.maintNeedsInspection,
+    fresh_overhaul: t.listing.maintFreshOverhaul,
+  };
+  const CONDITION_LABEL: Record<number, string> = {
+    1: t.listing.condProject, 2: t.listing.condPoor, 3: t.listing.condFair, 4: t.listing.condBelowAvg,
+    5: t.listing.condGood, 6: t.listing.condVeryGood, 7: t.listing.condAboveAvg,
+    8: t.listing.condExcellent, 9: t.listing.condShowQuality, 10: t.listing.condLikeNew,
+  };
+  const GALLEY_LABEL: Record<string, string> = {
+    none: t.listing.galleyNone, forward: t.listing.galleyForward, aft: t.listing.galleyAft, both: t.listing.galleyBoth,
+  };
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -394,7 +395,7 @@ export default function ListingDetailClient({
       .maybeSingle();
     const nowSaved = !!data;
     setIsSaved(nowSaved);
-    if (nowSaved) showToast("Aircraft saved to your list.");
+    if (nowSaved) showToast(t.listing.aircraftSaved);
   };
 
   const handleShare = async () => {
@@ -419,7 +420,7 @@ export default function ListingDetailClient({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Breadcrumb */}
         <nav className="text-xs text-[#64748B] mb-6 flex items-center gap-1.5">
-          <a href="/search" className="hover:text-[#2563EB] transition-colors">Aircraft</a>
+          <a href="/search" className="hover:text-[#2563EB] transition-colors">{t.listing.breadcrumbAircraft}</a>
           <span>/</span>
           <span className="capitalize">{model.category}s</span>
           <span>/</span>
@@ -453,23 +454,23 @@ export default function ListingDetailClient({
 
             {/* Specifications */}
             <div className="bg-white rounded-2xl border border-slate-200 p-6">
-              <h2 className="font-bold text-[#0F172A] mb-5 text-lg">Specifications</h2>
+              <h2 className="font-bold text-[#0F172A] mb-5 text-lg">{t.listing.specs}</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
                 <div>
-                  <Spec label="Year" value={listing.year} />
-                  <Spec label="Manufacturer" value={model.manufacturers.name} />
-                  <Spec label="Model" value={model.name} />
-                  <Spec label="Registration" value={listing.registration_number} />
-                  <Spec label="Serial number" value={listing.serial_number} />
-                  <Spec label="Passenger seats" value={listing.passenger_seats} />
+                  <Spec label={t.listing.year} value={listing.year} />
+                  <Spec label={t.listing.manufacturer} value={model.manufacturers.name} />
+                  <Spec label={t.listing.model} value={model.name} />
+                  <Spec label={t.listing.registration} value={listing.registration_number} />
+                  <Spec label={t.listing.serialNumber} value={listing.serial_number} />
+                  <Spec label={t.listing.passengerSeats} value={listing.passenger_seats} />
                   <Spec
-                    label="Galley"
+                    label={t.listing.galley}
                     value={listing.galley_config ? GALLEY_LABEL[listing.galley_config] : undefined}
                   />
                 </div>
                 <div>
                   <Spec
-                    label="Total time (TT)"
+                    label={t.listing.totalTime}
                     value={
                       listing.total_time_hours != null
                         ? `${listing.total_time_hours.toLocaleString()} hrs`
@@ -477,7 +478,7 @@ export default function ListingDetailClient({
                     }
                   />
                   <Spec
-                    label="Engine SMOH"
+                    label={t.listing.engineSmoh}
                     value={
                       listing.engine_time_smoh != null
                         ? `${listing.engine_time_smoh.toLocaleString()} hrs`
@@ -485,11 +486,11 @@ export default function ListingDetailClient({
                     }
                   />
                   <Spec
-                    label="Engine program"
+                    label={t.listing.engineProgram}
                     value={ENGINE_LABEL[listing.engine_program ?? "na"]}
                   />
                   <Spec
-                    label="Condition"
+                    label={t.listing.condition}
                     value={
                       listing.condition_rating != null
                         ? `${listing.condition_rating}/10 — ${CONDITION_LABEL[listing.condition_rating]}`
@@ -497,11 +498,11 @@ export default function ListingDetailClient({
                     }
                   />
                   <Spec
-                    label="Maintenance"
+                    label={t.listing.maintenance}
                     value={MAINTENANCE_LABEL[listing.maintenance_status ?? ""] ?? listing.maintenance_status}
                   />
                   <Spec
-                    label="Location"
+                    label={t.listing.location}
                     value={location}
                   />
                 </div>
@@ -510,7 +511,7 @@ export default function ListingDetailClient({
               {/* Avionics */}
               {listing.avionics_description && (
                 <div className="mt-5 pt-5 border-t border-slate-100">
-                  <p className="text-sm text-[#64748B] mb-1.5">Avionics</p>
+                  <p className="text-sm text-[#64748B] mb-1.5">{t.listing.avionics}</p>
                   <p className="text-sm text-[#0F172A] leading-relaxed">{listing.avionics_description}</p>
                 </div>
               )}
@@ -519,7 +520,7 @@ export default function ListingDetailClient({
             {/* Description */}
             {listing.description && (
               <div className="bg-white rounded-2xl border border-slate-200 p-6">
-                <h2 className="font-bold text-[#0F172A] mb-4 text-lg">Description</h2>
+                <h2 className="font-bold text-[#0F172A] mb-4 text-lg">{t.listing.description}</h2>
                 <p className="text-sm text-[#64748B] leading-relaxed whitespace-pre-line">
                   {listing.description}
                 </p>
@@ -557,23 +558,23 @@ export default function ListingDetailClient({
                     <p className="text-xs font-bold text-[#0F172A]">
                       {listing.total_time_hours.toLocaleString()}
                     </p>
-                    <p className="text-[10px] text-[#64748B]">hrs TT</p>
+                    <p className="text-[10px] text-[#64748B]">{t.listing.hrsTT}</p>
                   </div>
                 )}
                 {listing.condition_rating != null && (
                   <div className="flex-1 bg-slate-50 rounded-xl p-3 text-center">
                     <Gauge size={16} className="text-[#2563EB] mx-auto mb-1" />
                     <p className="text-xs font-bold text-[#0F172A]">{listing.condition_rating}/10</p>
-                    <p className="text-[10px] text-[#64748B]">Condition</p>
+                    <p className="text-[10px] text-[#64748B]">{t.listing.condition}</p>
                   </div>
                 )}
                 {listing.engine_program && listing.engine_program !== "na" && (
                   <div className="flex-1 bg-slate-50 rounded-xl p-3 text-center">
                     <Shield size={16} className="text-[#2563EB] mx-auto mb-1" />
                     <p className="text-[10px] font-bold text-[#0F172A]">
-                      {listing.engine_program === "enrolled" ? "Enrolled" : "Not enrolled"}
+                      {listing.engine_program === "enrolled" ? t.listing.enrolled : t.listing.notEnrolled}
                     </p>
-                    <p className="text-[10px] text-[#64748B]">Engine program</p>
+                    <p className="text-[10px] text-[#64748B]">{t.listing.engineProgram}</p>
                   </div>
                 )}
               </div>
@@ -592,7 +593,7 @@ export default function ListingDetailClient({
                   className="w-full bg-[#2563EB] hover:bg-[#3B82F6] text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg shadow-blue-900/20"
                 >
                   <MessageCircle size={18} />
-                  Contact Seller
+                  {t.listing.contactSeller}
                 </button>
 
                 <button
@@ -605,7 +606,7 @@ export default function ListingDetailClient({
                   className="w-full bg-[#25D366] hover:bg-[#1EBF5A] text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
                 >
                   <MessageCircle size={18} />
-                  WhatsApp
+                  {t.listing.contactWhatsApp}
                 </button>
 
                 <div className="flex gap-2">
@@ -618,14 +619,14 @@ export default function ListingDetailClient({
                     }`}
                   >
                     <Heart size={16} className={isSaved ? "fill-red-500" : ""} />
-                    {isSaved ? "Saved" : "Save"}
+                    {isSaved ? t.listing.saved : t.listing.save}
                   </button>
                   <button
                     onClick={handleShare}
                     className="flex-1 border-2 border-slate-200 hover:border-slate-300 text-[#64748B] font-semibold py-2.5 rounded-xl flex items-center justify-center gap-1.5 text-sm transition-colors"
                   >
                     <Share2 size={16} />
-                    {copied ? "Copied!" : "Share"}
+                    {copied ? t.listing.copied : t.listing.share}
                   </button>
                 </div>
               </div>
@@ -636,7 +637,7 @@ export default function ListingDetailClient({
         {/* Similar listings */}
         {similar.length > 0 && (
           <section className="mt-12">
-            <h2 className="text-xl font-bold text-[#0F172A] mb-6">Similar Aircraft</h2>
+            <h2 className="text-xl font-bold text-[#0F172A] mb-6">{t.listing.similarAircraft}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
               {similar.map((l) => (
                 <ListingCard key={l.id} listing={l} />
@@ -676,7 +677,7 @@ export default function ListingDetailClient({
           className="bg-[#2563EB] hover:bg-[#3B82F6] text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2 transition-colors shadow-lg shadow-blue-900/20"
         >
           <Users size={18} />
-          Contact
+          {t.listing.contact}
         </button>
       </div>
 
@@ -686,7 +687,7 @@ export default function ListingDetailClient({
           listingId={listing.id}
           listingTitle={listing.title}
           onClose={() => setContactOpen(false)}
-          onSuccess={() => showToast("Inquiry sent! The seller will contact you soon.")}
+          onSuccess={() => showToast(t.listing.inquirySent)}
         />
       )}
     </div>

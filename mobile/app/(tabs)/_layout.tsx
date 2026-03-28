@@ -5,7 +5,7 @@ import { Colors } from "@/constants/colors";
 type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
 
 function TabIcon({ name, color }: { name: IoniconName; color: string }) {
-  return <Ionicons name={name} size={22} color={color} />;
+  return <Ionicons name={name} size={21} color={color} />;
 }
 
 export default function TabLayout() {
@@ -13,23 +13,28 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors.accent,
-        tabBarInactiveTintColor: Colors.slate,
+        tabBarInactiveTintColor: Colors.textMuted,
         tabBarStyle: {
           backgroundColor: Colors.white,
           borderTopColor: Colors.border,
           paddingBottom: 4,
-          height: 60,
+          paddingTop: 4,
+          height: 58,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: "600",
+          letterSpacing: 0.2,
         },
         headerStyle: {
           backgroundColor: Colors.primary,
+          shadowColor: "transparent",
+          elevation: 0,
         },
         headerTintColor: Colors.white,
         headerTitleStyle: {
           fontWeight: "700",
+          fontSize: 17,
         },
       }}
     >
@@ -47,6 +52,16 @@ export default function TabLayout() {
           title: "Buscar",
           headerTitle: "Buscar Aeronaves",
           tabBarIcon: ({ color }) => <TabIcon name="search" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="valuation"
+        options={{
+          title: "Avaliação",
+          headerTitle: "Avaliação de Aeronave",
+          tabBarIcon: ({ color }) => (
+            <TabIcon name="analytics" color={color} />
+          ),
         }}
       />
       <Tabs.Screen
