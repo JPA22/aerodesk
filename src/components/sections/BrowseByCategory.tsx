@@ -4,6 +4,7 @@ import { motion, type Variants } from "framer-motion";
 import { Plane, Wind, Gauge, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useTranslation } from "@/components/providers/language-provider";
+import { fmtNum } from "@/lib/format";
 
 const containerVariants: Variants = { hidden: {}, visible: { transition: { staggerChildren: 0.1 } } };
 const cardVariants: Variants = { hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } } };
@@ -12,7 +13,7 @@ const categoryIcons: LucideIcon[] = [Zap, Wind, Gauge, Plane];
 const categoryCounts = [842, 456, 1020, 312];
 
 export default function BrowseByCategory() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   const categories = [
     { name: t.categories.jetsName, description: t.categories.jetsDesc, count: categoryCounts[0], Icon: categoryIcons[0] },
@@ -36,7 +37,7 @@ export default function BrowseByCategory() {
               <h3 className="text-white font-bold text-xl">{cat.name}</h3>
               <p className="text-slate-300 text-sm leading-snug">{cat.description}</p>
               <span className="text-[#93C5FD] text-sm font-medium group-hover:text-white transition-colors mt-1">
-                {t.categories.browseListings.replace("{count}", cat.count.toLocaleString())}
+                {t.categories.browseListings.replace("{count}", fmtNum(cat.count, locale))}
               </span>
             </motion.div>
           ))}

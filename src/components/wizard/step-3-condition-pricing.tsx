@@ -1,6 +1,8 @@
 "use client";
 
 import type { WizardForm } from "./types";
+import { useTranslation } from "@/components/providers/language-provider";
+import { getJsLocale } from "@/lib/format";
 
 interface Props {
   form: WizardForm;
@@ -37,15 +39,21 @@ const CONDITION_COLOR: Record<number, string> = {
   10: "#2563EB",
 };
 
-function formatPriceDisplay(raw: string): string {
+function formatPriceDisplay(raw: string, jsLocale: string): string {
   if (!raw) return "";
-  const [intPart, decPart] = raw.split(".");
-  const formatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return decPart !== undefined ? `${formatted}.${decPart}` : formatted;
+  // Strip any non-digit/dot characters, parse as number, format with locale
+  const num = Number(raw.replace(/[^0-9.]/g, ""));
+  if (isNaN(num)) return raw;
+  const hasCents = raw.includes(".");
+  return num.toLocaleString(jsLocale, {
+    minimumFractionDigits: hasCents ? (raw.split(".")[1]?.length ?? 0) : 0,
+    maximumFractionDigits: 2,
+  });
 }
 
 export default function Step3ConditionPricing({ form }: Props) {
   const { register, watch, setValue, formState: { errors } } = form;
+  const { locale } = useTranslation();
 
   const conditionRating = watch("condition_rating") ?? 5;
   const hasDamage = watch("has_damage_history") ?? false;
@@ -177,7 +185,7 @@ export default function Step3ConditionPricing({ form }: Props) {
               type="text"
               inputMode="decimal"
               placeholder="e.g. 8,950,000"
-              value={formatPriceDisplay(watch("asking_price") ?? "")}
+              value={formatPriceDisplay(watch("asking_price") ?? "", getJsLocale(locale))}
               onChange={(e) => {
                 // Strip everything except digits and a single decimal point
                 const raw = e.target.value.replace(/[^0-9.]/g, "");

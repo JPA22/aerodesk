@@ -194,6 +194,11 @@ lang: { code: "en", label: "English", flag: "🇺🇸" },
     engineProgram: "Engine program",
     enrolled: "Enrolled",
     notEnrolled: "Not enrolled",
+    // New filters
+    minSeats: "Min passenger seats",
+    pressurizedOnly: "Pressurized only",
+    minRange: "Min range",
+    minSpeed: "Min cruise speed",
     // Results
     searching: "Searching…",
     aircraftFound: "aircraft found",
@@ -329,6 +334,21 @@ lang: { code: "en", label: "English", flag: "🇺🇸" },
     galleyForward: "Forward",
     galleyAft: "Aft",
     galleyBoth: "Forward & aft",
+    // Performance & cabin
+    performance: "Performance & Cabin",
+    range: "Range",
+    cruiseSpeed: "Cruise speed",
+    maxAltitude: "Max altitude",
+    pressurized: "Pressurized",
+    engines: "Engines",
+    cabinDimensions: "Cabin (L × W × H)",
+    baggageVolume: "Baggage volume",
+    mtow: "MTOW",
+    usefulLoad: "Useful load",
+    yes: "Yes",
+    no: "No",
+    // Equipment
+    equipment: "Equipment",
   },
 
   // Common

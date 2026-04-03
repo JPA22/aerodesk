@@ -240,6 +240,8 @@ export default function NewListingPage() {
           location_city: values.location_city,
           description: values.additional_notes ?? null,
           status,
+          wifi_equipped: values.wifi_equipped ?? false,
+          apu_equipped: values.apu_equipped ?? false,
           published_at: status === "active" ? new Date().toISOString() : null,
         })
         .select("id")

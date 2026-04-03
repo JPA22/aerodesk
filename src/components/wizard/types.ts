@@ -24,6 +24,8 @@ export const wizardSchema = z.object({
   avionics_description: z.string().optional(),
   passenger_seats: z.string().optional(),
   galley_config: z.string().optional(),
+  wifi_equipped: z.boolean(),
+  apu_equipped: z.boolean(),
 
   // Step 3 — Condition & Pricing
   condition_rating: z.number().int().min(1).max(10),
@@ -83,6 +85,8 @@ export const WIZARD_DEFAULTS: Partial<WizardData> = {
   contact_email: true,
   contact_phone: false,
   contact_whatsapp: false,
+  wifi_equipped: false,
+  apu_equipped: false,
 };
 
 export const WIZARD_STORAGE_KEY = "aerodesk_listing_wizard_v1";

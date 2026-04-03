@@ -31,7 +31,10 @@ async function getListing(id: string) {
     .select(
       `*,
        aircraft_models!aircraft_model_id (
-         id, name, category,
+         id, name, category, typical_range_nm, typical_speed_kts, typical_seats,
+         cabin_length_ft, cabin_width_ft, cabin_height_ft, baggage_volume_cuft,
+         cruise_speed_kts, max_altitude_ft, pressurized, num_engines,
+         mtow_lbs, useful_load_lbs,
          manufacturers!manufacturer_id (id, name)
        ),
        listing_images!listing_id (image_url, is_primary, display_order)`

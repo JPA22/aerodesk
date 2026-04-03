@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { Manufacturer } from "@/types/database";
 import ListingCard, { type ListingCardData } from "@/components/search/listing-card";
 import { useTranslation } from "@/components/providers/language-provider";
+import { formatPriceCompact, fmtNum } from "@/lib/format";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -71,6 +72,48 @@ function DualSlider({
   );
 }
 
+// ── Formatted number input for filters ────────────────────────────────────────
+
+function FilterNumberInput({
+  value,
+  onChange,
+  placeholder,
+  suffix,
+  locale,
+  className = "",
+}: {
+  value: string;
+  onChange: (raw: string | null) => void;
+  placeholder: string;
+  suffix?: string;
+  locale: string;
+  className?: string;
+}) {
+  const jsLocale = locale === "pt" ? "pt-BR" : locale === "es" ? "es-ES" : "en-US";
+  const display = value ? Number(value).toLocaleString(jsLocale) : "";
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const digits = e.target.value.replace(/[^0-9]/g, "");
+    onChange(digits || null);
+  }
+
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        inputMode="numeric"
+        placeholder={placeholder}
+        value={display}
+        onChange={handleChange}
+        className={`w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent ${suffix ? "pr-12" : ""} ${className}`}
+      />
+      {suffix && (
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">{suffix}</span>
+      )}
+    </div>
+  );
+}
+
 // ── Filter sidebar ────────────────────────────────────────────────────────────
 
 function Filters({
@@ -81,7 +124,7 @@ function Filters({
   onChange: (key: string, value: string | null) => void;
   onClear: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [mfgSearch, setMfgSearch] = useState("");
   const [mfgOpen, setMfgOpen] = useState(false);
 
@@ -106,12 +149,17 @@ function Filters({
   const maxHours = params.get("maxHours") ?? "";
   const country = params.get("country") ?? "";
   const enginePrograms = params.getAll("engineProgram");
+  const minSeats = params.get("minSeats") ?? "";
+  const minRange = params.get("minRange") ?? "";
+  const minSpeed = params.get("minSpeed") ?? "";
+  const pressurized = params.get("pressurized") === "true";
 
   const hasFilters =
     selectedCats.length > 0 || selectedMfgs.length > 0 ||
     priceMin > 0 || priceMax < MAX_PRICE ||
     yearMin > MIN_YEAR || yearMax < MAX_YEAR ||
-    maxHours || country || enginePrograms.length > 0;
+    maxHours || country || enginePrograms.length > 0 ||
+    minSeats || minRange || minSpeed || pressurized;
 
   const toggleMulti = (key: string, value: string, current: string[]) => {
     if (current.includes(value)) {
@@ -122,8 +170,7 @@ function Filters({
     }
   };
 
-  const formatPrice = (v: number) =>
-    v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1)}M` : `$${(v / 1000).toFixed(0)}K`;
+  const fmtPrice = (v: number) => formatPriceCompact(v, locale);
 
   const filteredMfgs = manufacturers.filter((m) =>
     m.name.toLowerCase().includes(mfgSearch.toLowerCase())
@@ -245,7 +292,7 @@ function Filters({
             onChange("priceMin", lo > 0 ? String(lo) : null);
             onChange("priceMax", hi < MAX_PRICE ? String(hi) : null);
           }}
-          format={formatPrice}
+          format={fmtPrice}
         />
       </div>
 
@@ -265,17 +312,13 @@ function Filters({
       {/* Max TT hours */}
       <div>
         <p className="text-xs font-bold text-[#0F172A] uppercase tracking-wider mb-2">{t.search.maxTotalTime}</p>
-        <div className="relative">
-          <input
-            type="number"
-            min={0}
-            placeholder="e.g. 5000"
-            value={maxHours}
-            onChange={(e) => onChange("maxHours", e.target.value || null)}
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
-          />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">{t.search.hrs}</span>
-        </div>
+        <FilterNumberInput
+          value={maxHours}
+          onChange={(v) => onChange("maxHours", v)}
+          placeholder="e.g. 5,000"
+          suffix={t.search.hrs}
+          locale={locale}
+        />
       </div>
 
       {/* Country */}
@@ -312,6 +355,56 @@ function Filters({
           ))}
         </div>
       </div>
+
+      {/* Min passenger seats */}
+      <div>
+        <p className="text-xs font-bold text-[#0F172A] uppercase tracking-wider mb-2">{t.search.minSeats}</p>
+        <FilterNumberInput
+          value={minSeats}
+          onChange={(v) => onChange("minSeats", v)}
+          placeholder="e.g. 6"
+          locale={locale}
+        />
+      </div>
+
+      {/* Pressurized */}
+      <div>
+        <label className="flex items-center gap-2.5 cursor-pointer group">
+          <input
+            type="checkbox"
+            checked={pressurized}
+            onChange={() => onChange("pressurized", pressurized ? null : "true")}
+            className="w-4 h-4 rounded border-slate-300 accent-[#2563EB]"
+          />
+          <span className="text-xs font-bold text-[#0F172A] uppercase tracking-wider group-hover:text-[#2563EB] transition-colors">
+            {t.search.pressurizedOnly}
+          </span>
+        </label>
+      </div>
+
+      {/* Min range */}
+      <div>
+        <p className="text-xs font-bold text-[#0F172A] uppercase tracking-wider mb-2">{t.search.minRange}</p>
+        <FilterNumberInput
+          value={minRange}
+          onChange={(v) => onChange("minRange", v)}
+          placeholder="e.g. 1,000"
+          suffix="nm"
+          locale={locale}
+        />
+      </div>
+
+      {/* Min cruise speed */}
+      <div>
+        <p className="text-xs font-bold text-[#0F172A] uppercase tracking-wider mb-2">{t.search.minSpeed}</p>
+        <FilterNumberInput
+          value={minSpeed}
+          onChange={(v) => onChange("minSpeed", v)}
+          placeholder="e.g. 250"
+          suffix="kts"
+          locale={locale}
+        />
+      </div>
     </div>
   );
 }
@@ -321,7 +414,7 @@ function Filters({
 function SearchContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   const SORT_OPTIONS = [
     { value: "newest", label: t.search.newestFirst },
@@ -361,6 +454,10 @@ function SearchContent() {
       const maxHours = searchParams.get("maxHours");
       const country = searchParams.get("country");
       const enginePrograms = searchParams.getAll("engineProgram");
+      const minSeats = searchParams.get("minSeats");
+      const minRange = searchParams.get("minRange");
+      const minSpeed = searchParams.get("minSpeed");
+      const pressurized = searchParams.get("pressurized") === "true";
       const sort = searchParams.get("sort") ?? "newest";
 
       let q = supabase
@@ -404,6 +501,14 @@ function SearchContent() {
         }
       }
 
+      // Listing-level: min passenger seats
+      if (minSeats) q = q.gte("passenger_seats", Number(minSeats));
+
+      // Model-level filters (nested)
+      if (pressurized) q = q.eq("aircraft_models.pressurized", true);
+      if (minRange) q = q.gte("aircraft_models.typical_range_nm", Number(minRange));
+      if (minSpeed) q = q.gte("aircraft_models.cruise_speed_kts", Number(minSpeed));
+
       // Sort
       if (sort === "price_asc") q = q.order("asking_price", { ascending: true });
       else if (sort === "price_desc") q = q.order("asking_price", { ascending: false });
@@ -430,7 +535,7 @@ function SearchContent() {
         if (error) {
           console.error("[search] fetch error:", error.message, "| code:", error.code, "| details:", error.details, "| hint:", error.hint);
         }
-        setListings((data as unknown as ListingCardData[]) ?? []);
+        setListings(((data as unknown as ListingCardData[]) ?? []).filter((l) => l.aircraft_models != null));
         setTotal(count ?? 0);
         setLoading(false);
       } catch (err: unknown) {
@@ -449,7 +554,7 @@ function SearchContent() {
     setLoadingMore(true);
     const { data, error } = await buildQuery(nextPage * PAGE_SIZE);
     if (error) console.error("[search] loadMore error:", error.message, "| code:", error.code);
-    setListings((prev) => [...prev, ...((data as unknown as ListingCardData[]) ?? [])]);
+    setListings((prev) => [...prev, ...((data as unknown as ListingCardData[]) ?? []).filter((l) => l.aircraft_models != null)]);
     setPage(nextPage);
     setLoadingMore(false);
   };
@@ -502,7 +607,7 @@ function SearchContent() {
               {loading ? (
                 <span className="animate-pulse">{t.search.searching}</span>
               ) : (
-                <><strong className="text-[#0F172A]">{total.toLocaleString()}</strong> {t.search.aircraftFound}</>
+                <><strong className="text-[#0F172A]">{fmtNum(total, locale)}</strong> {t.search.aircraftFound}</>
               )}
             </p>
           </div>

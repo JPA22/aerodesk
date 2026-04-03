@@ -17,7 +17,8 @@ import {
   Save,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, fmtNum } from "@/lib/format";
+import { useTranslation } from "@/components/providers/language-provider";
 import type { ListingStatus } from "@/types/database";
 
 interface ListingImage {
@@ -72,6 +73,7 @@ const inputCls =
   "w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 focus:border-[#2563EB] transition-colors";
 
 function SaleDetailsPanel({ listing, onClose, onRefresh }: SaleDetailsProps) {
+  const { locale } = useTranslation();
   const [buyerName, setBuyerName] = useState(listing.buyer_name ?? "");
   const [buyerEmail, setBuyerEmail] = useState(listing.buyer_email ?? "");
   const [buyerPhone, setBuyerPhone] = useState(listing.buyer_phone ?? "");
@@ -81,9 +83,9 @@ function SaleDetailsPanel({ listing, onClose, onRefresh }: SaleDetailsProps) {
   const [saleNotes, setSaleNotes] = useState(listing.sale_notes ?? "");
   const [saving, setSaving] = useState(false);
 
-  // Format price with commas for display
+  // Format price with locale separators for display
   const salePriceDisplay = salePriceRaw
-    ? Number(salePriceRaw).toLocaleString("en-US")
+    ? fmtNum(Number(salePriceRaw), locale)
     : "";
 
   function handleSalePriceInput(e: React.ChangeEvent<HTMLInputElement>) {
@@ -199,6 +201,7 @@ function SaleDetailsPanel({ listing, onClose, onRefresh }: SaleDetailsProps) {
 
 export default function ListingsClient({ listings }: { listings: Listing[] }) {
   const router = useRouter();
+  const { locale } = useTranslation();
   const [tab, setTab] = useState<Tab>("all");
   const [, startTransition] = useTransition();
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -391,7 +394,7 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-[#0F172A] font-medium">
-                          {formatPrice(listing.asking_price, listing.currency)}
+                          {formatPrice(listing.asking_price, listing.currency, locale)}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${sc.cls}`}>
@@ -530,7 +533,7 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                           {listing.title}
                         </Link>
                         <p className="text-[#2563EB] font-semibold text-sm mt-0.5">
-                          {formatPrice(listing.asking_price, listing.currency)}
+                          {formatPrice(listing.asking_price, listing.currency, locale)}
                         </p>
                       </div>
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full h-fit ${sc.cls}`}>

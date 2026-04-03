@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
 import ContactModal from "@/components/search/contact-modal";
 import ListingCard, { type ListingCardData } from "@/components/search/listing-card";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, fmtNum } from "@/lib/format";
 import { fmtVal, priceBadge, pricePosition, type ValuationResult } from "@/lib/valuation";
 import { BarChart3 } from "lucide-react";
 import { useTranslation } from "@/components/providers/language-provider";
@@ -40,10 +40,25 @@ type ListingDetail = {
   location_state: string | null;
   location_country: string;
   featured: boolean;
+  wifi_equipped: boolean;
+  apu_equipped: boolean;
   aircraft_models: {
     id: string;
     name: string;
     category: string;
+    typical_range_nm: number | null;
+    typical_speed_kts: number | null;
+    typical_seats: number | null;
+    cabin_length_ft: number | null;
+    cabin_width_ft: number | null;
+    cabin_height_ft: number | null;
+    baggage_volume_cuft: number | null;
+    cruise_speed_kts: number | null;
+    max_altitude_ft: number | null;
+    pressurized: boolean;
+    num_engines: number;
+    mtow_lbs: number | null;
+    useful_load_lbs: number | null;
     manufacturers: { id: string; name: string };
   };
   listing_images: Image[];
@@ -220,7 +235,7 @@ function ValuationCard({
 }) {
   const [valuation, setValuation] = useState<ValuationResult | null>(null);
   const [loading, setLoading] = useState(true);
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   useEffect(() => {
     fetch("/api/valuation", {
@@ -277,9 +292,9 @@ function ValuationCard({
 
       {/* Value range numbers */}
       <div className="flex justify-between text-xs mb-1.5">
-        <span className="text-[#64748B]">{fmtVal(valuation.low)}</span>
-        <span className="font-bold text-[#0F172A]">{fmtVal(valuation.mid)}</span>
-        <span className="text-[#64748B]">{fmtVal(valuation.high)}</span>
+        <span className="text-[#64748B]">{fmtVal(valuation.low, locale)}</span>
+        <span className="font-bold text-[#0F172A]">{fmtVal(valuation.mid, locale)}</span>
+        <span className="text-[#64748B]">{fmtVal(valuation.high, locale)}</span>
       </div>
 
       {/* Gradient bar */}
@@ -314,7 +329,7 @@ export default function ListingDetailClient({
   const { user } = useAuth();
   const router = useRouter();
   const supabase = createClient();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [contactOpen, setContactOpen] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -343,7 +358,7 @@ export default function ListingDetailClient({
   };
 
   const model = listing.aircraft_models;
-  const priceDisplay = formatPrice(listing.asking_price, listing.currency);
+  const priceDisplay = formatPrice(listing.asking_price, listing.currency, locale);
 
   const location = [listing.location_city, listing.location_state, listing.location_country]
     .filter(Boolean)
@@ -473,7 +488,7 @@ export default function ListingDetailClient({
                     label={t.listing.totalTime}
                     value={
                       listing.total_time_hours != null
-                        ? `${listing.total_time_hours.toLocaleString()} hrs`
+                        ? `${fmtNum(listing.total_time_hours, locale)} hrs`
                         : undefined
                     }
                   />
@@ -481,7 +496,7 @@ export default function ListingDetailClient({
                     label={t.listing.engineSmoh}
                     value={
                       listing.engine_time_smoh != null
-                        ? `${listing.engine_time_smoh.toLocaleString()} hrs`
+                        ? `${fmtNum(listing.engine_time_smoh, locale)} hrs`
                         : undefined
                     }
                   />
@@ -507,6 +522,76 @@ export default function ListingDetailClient({
                   />
                 </div>
               </div>
+
+              {/* Performance & Cabin */}
+              {(model.typical_range_nm || model.cruise_speed_kts || model.typical_speed_kts || model.max_altitude_ft || model.cabin_length_ft || model.baggage_volume_cuft || model.mtow_lbs || model.num_engines > 1 || model.pressurized) && (
+                <div className="mt-5 pt-5 border-t border-slate-100">
+                  <p className="text-xs font-bold text-[#0F172A] uppercase tracking-wider mb-3">{t.listing.performance}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
+                    <div>
+                      <Spec
+                        label={t.listing.range}
+                        value={model.typical_range_nm != null ? `${fmtNum(model.typical_range_nm, locale)} nm` : undefined}
+                      />
+                      <Spec
+                        label={t.listing.cruiseSpeed}
+                        value={
+                          (model.cruise_speed_kts ?? model.typical_speed_kts) != null
+                            ? `${fmtNum((model.cruise_speed_kts ?? model.typical_speed_kts)!, locale)} kts`
+                            : undefined
+                        }
+                      />
+                      <Spec
+                        label={t.listing.maxAltitude}
+                        value={model.max_altitude_ft != null ? `${fmtNum(model.max_altitude_ft, locale)} ft` : undefined}
+                      />
+                      <Spec label={t.listing.pressurized} value={model.pressurized ? t.listing.yes : t.listing.no} />
+                      <Spec label={t.listing.engines} value={model.num_engines > 0 ? model.num_engines : undefined} />
+                    </div>
+                    <div>
+                      <Spec
+                        label={t.listing.cabinDimensions}
+                        value={
+                          model.cabin_length_ft != null
+                            ? `${model.cabin_length_ft} × ${model.cabin_width_ft ?? "—"} × ${model.cabin_height_ft ?? "—"} ft`
+                            : undefined
+                        }
+                      />
+                      <Spec
+                        label={t.listing.baggageVolume}
+                        value={model.baggage_volume_cuft != null ? `${model.baggage_volume_cuft} cu ft` : undefined}
+                      />
+                      <Spec
+                        label={t.listing.mtow}
+                        value={model.mtow_lbs != null ? `${fmtNum(model.mtow_lbs, locale)} lbs` : undefined}
+                      />
+                      <Spec
+                        label={t.listing.usefulLoad}
+                        value={model.useful_load_lbs != null ? `${fmtNum(model.useful_load_lbs, locale)} lbs` : undefined}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Equipment */}
+              {(listing.wifi_equipped || listing.apu_equipped) && (
+                <div className="mt-5 pt-5 border-t border-slate-100">
+                  <p className="text-xs font-bold text-[#0F172A] uppercase tracking-wider mb-3">{t.listing.equipment}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {listing.wifi_equipped && (
+                      <span className="inline-flex items-center gap-1.5 bg-blue-50 text-[#2563EB] text-xs font-medium px-3 py-1.5 rounded-full">
+                        <CheckCircle size={12} /> WiFi
+                      </span>
+                    )}
+                    {listing.apu_equipped && (
+                      <span className="inline-flex items-center gap-1.5 bg-blue-50 text-[#2563EB] text-xs font-medium px-3 py-1.5 rounded-full">
+                        <CheckCircle size={12} /> APU
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Avionics */}
               {listing.avionics_description && (
@@ -556,7 +641,7 @@ export default function ListingDetailClient({
                   <div className="flex-1 bg-slate-50 rounded-xl p-3 text-center">
                     <Clock size={16} className="text-[#2563EB] mx-auto mb-1" />
                     <p className="text-xs font-bold text-[#0F172A]">
-                      {listing.total_time_hours.toLocaleString()}
+                      {fmtNum(listing.total_time_hours, locale)}
                     </p>
                     <p className="text-[10px] text-[#64748B]">{t.listing.hrsTT}</p>
                   </div>

@@ -7,7 +7,8 @@ import { MapPin, Clock, Heart, Star } from "lucide-react";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, fmtNum } from "@/lib/format";
+import { useTranslation } from "@/components/providers/language-provider";
 
 // ── Shared type (used by search page + detail page similar listings) ──────────
 
@@ -67,6 +68,7 @@ export default function ListingCard({
   const { user } = useAuth();
   const router = useRouter();
   const supabase = createClient();
+  const { locale } = useTranslation();
   const [saving, setSaving] = useState(false);
   const isSaved = savedIds.has(listing.id);
 
@@ -74,7 +76,7 @@ export default function ListingCard({
     listing.listing_images.find((i) => i.is_primary)?.image_url ??
     listing.listing_images.sort((a, b) => a.display_order - b.display_order)[0]?.image_url;
 
-  const priceDisplay = formatPrice(listing.asking_price, listing.currency);
+  const priceDisplay = formatPrice(listing.asking_price, listing.currency, locale);
 
   const location = [listing.location_city, listing.location_state, listing.location_country]
     .filter(Boolean)
@@ -147,7 +149,7 @@ export default function ListingCard({
         {/* Body */}
         <div className="p-4">
           <p className="text-xs text-[#64748B] mb-1 font-medium">
-            {listing.aircraft_models.manufacturers.name} · {listing.aircraft_models.category}
+            {listing.aircraft_models?.manufacturers?.name ?? "—"} · {listing.aircraft_models?.category ?? "—"}
           </p>
           <h3 className="font-bold text-[#0F172A] text-sm mb-3 leading-snug group-hover:text-[#2563EB] transition-colors line-clamp-2">
             {listing.title}
@@ -158,7 +160,7 @@ export default function ListingCard({
             {listing.total_time_hours != null && (
               <span className="flex items-center gap-1">
                 <Clock size={11} />
-                {listing.total_time_hours.toLocaleString()} hrs TT
+                {fmtNum(listing.total_time_hours, locale)} hrs TT
               </span>
             )}
             {listing.engine_program && listing.engine_program !== "na" && (

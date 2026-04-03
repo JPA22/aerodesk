@@ -3,6 +3,8 @@
 import { Loader2, Pencil, ImageIcon } from "lucide-react";
 import type { WizardForm, ImageItem } from "./types";
 import type { Manufacturer, AircraftModel } from "@/types/database";
+import { useTranslation } from "@/components/providers/language-provider";
+import { fmtNum } from "@/lib/format";
 
 interface Props {
   form: WizardForm;
@@ -78,6 +80,7 @@ export default function Step6ReviewPublish({
   submitError,
 }: Props) {
   const values = form.getValues();
+  const { locale } = useTranslation();
 
   const manufacturer = manufacturers.find((m) => m.id === values.manufacturer_id);
   const model = models.find((m) => m.id === values.aircraft_model_id);
@@ -86,7 +89,7 @@ export default function Step6ReviewPublish({
   const priceDisplay = values.price_on_request
     ? "Price on request"
     : values.asking_price
-      ? `${sym} ${Number(values.asking_price).toLocaleString()}`
+      ? `${sym} ${fmtNum(Number(values.asking_price), locale)}`
       : "—";
 
   return (
@@ -118,6 +121,8 @@ export default function Step6ReviewPublish({
         <Row label="Galley" value={values.galley_config
           ? ({ none: "No galley", forward: "Forward galley", aft: "Aft galley", both: "Both (forward & aft)" } as Record<string, string>)[values.galley_config]
           : undefined} />
+        <Row label="WiFi" value={values.wifi_equipped ? "Yes" : "No"} />
+        <Row label="APU" value={values.apu_equipped ? "Yes" : "No"} />
       </Section>
 
       {/* Step 3 */}

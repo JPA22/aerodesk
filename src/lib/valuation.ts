@@ -155,10 +155,11 @@ export function calculateValuation(input: ValuationInput): ValuationResult {
 }
 
 /** Compact price formatter for valuation displays (no cents). */
-export function fmtVal(n: number): string {
+export function fmtVal(n: number, locale: string = "en"): string {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `$${Math.round(n / 1_000)}K`;
-  return `$${n.toLocaleString("en-US")}`;
+  const jsLocale = locale === "pt" ? "pt-BR" : locale === "es" ? "es-ES" : "en-US";
+  return `$${n.toLocaleString(jsLocale)}`;
 }
 
 /** Where does `price` fall on the [low, high] bar? Returns 0-100. */

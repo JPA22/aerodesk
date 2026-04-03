@@ -2,6 +2,8 @@
 
 import { useController } from "react-hook-form";
 import type { WizardForm } from "./types";
+import { useTranslation } from "@/components/providers/language-provider";
+import { fmtNum } from "@/lib/format";
 
 interface Props {
   form: WizardForm;
@@ -23,10 +25,11 @@ function HoursInput({
   placeholder: string;
 }) {
   const { field } = useController({ name, control: form.control });
+  const { locale } = useTranslation();
 
   const display =
     field.value != null && field.value !== ""
-      ? Number(String(field.value).replace(/[^0-9]/g, "")).toLocaleString("en-US")
+      ? fmtNum(Number(String(field.value).replace(/[^0-9]/g, "")), locale)
       : "";
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -165,6 +168,36 @@ export default function Step2AircraftDetails({ form }: Props) {
             <option value="both">Both (forward &amp; aft)</option>
           </select>
         </div>
+      </div>
+
+      {/* Equipment toggles */}
+      <div>
+        <label className={labelClass}>Equipment</label>
+        <div className="flex gap-6 mt-1">
+          <label className="flex items-center gap-2.5 cursor-pointer group">
+            <input
+              type="checkbox"
+              {...register("wifi_equipped")}
+              className="w-4 h-4 rounded border-slate-300 accent-[#2563EB]"
+            />
+            <span className="text-sm text-[#0F172A] group-hover:text-[#2563EB] transition-colors">
+              WiFi equipped
+            </span>
+          </label>
+          <label className="flex items-center gap-2.5 cursor-pointer group">
+            <input
+              type="checkbox"
+              {...register("apu_equipped")}
+              className="w-4 h-4 rounded border-slate-300 accent-[#2563EB]"
+            />
+            <span className="text-sm text-[#0F172A] group-hover:text-[#2563EB] transition-colors">
+              APU equipped
+            </span>
+          </label>
+        </div>
+        <p className="text-xs text-[#64748B] mt-1.5">
+          Select the equipment installed on this aircraft.
+        </p>
       </div>
     </div>
   );

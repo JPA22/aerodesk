@@ -160,6 +160,16 @@ export type Database = {
           typical_speed_kts: number | null;
           typical_seats: number | null;
           created_at: string;
+          cabin_length_ft: number | null;
+cabin_width_ft: number | null;
+cabin_height_ft: number | null;
+baggage_volume_cuft: number | null;
+cruise_speed_kts: number | null;
+max_altitude_ft: number | null;
+pressurized: boolean;
+num_engines: number;
+mtow_lbs: number | null;
+useful_load_lbs: number | null;
         };
         Insert: {
           id?: string;
@@ -170,6 +180,16 @@ export type Database = {
           typical_speed_kts?: number | null;
           typical_seats?: number | null;
           created_at?: string;
+          cabin_length_ft?: number | null;
+cabin_width_ft?: number | null;
+cabin_height_ft?: number | null;
+baggage_volume_cuft?: number | null;
+cruise_speed_kts?: number | null;
+max_altitude_ft?: number | null;
+pressurized?: boolean;
+num_engines?: number;
+mtow_lbs?: number | null;
+useful_load_lbs?: number | null;
         };
         Update: {
           id?: string;
@@ -179,6 +199,16 @@ export type Database = {
           typical_range_nm?: number | null;
           typical_speed_kts?: number | null;
           typical_seats?: number | null;
+          cabin_length_ft?: number | null;
+cabin_width_ft?: number | null;
+cabin_height_ft?: number | null;
+baggage_volume_cuft?: number | null;
+cruise_speed_kts?: number | null;
+max_altitude_ft?: number | null;
+pressurized?: boolean;
+num_engines?: number;
+mtow_lbs?: number | null;
+useful_load_lbs?: number | null;
           created_at?: string;
         };
         Relationships: [
@@ -227,6 +257,8 @@ export type Database = {
           buyer_phone: string | null;
           sale_notes: string | null;
           sold_at: string | null;
+          wifi_equipped: boolean;
+          apu_equipped: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -264,6 +296,8 @@ export type Database = {
           buyer_phone?: string | null;
           sale_notes?: string | null;
           sold_at?: string | null;
+          wifi_equipped?: boolean;
+          apu_equipped?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -301,6 +335,8 @@ export type Database = {
           buyer_phone?: string | null;
           sale_notes?: string | null;
           sold_at?: string | null;
+          wifi_equipped?: boolean;
+          apu_equipped?: boolean;
           created_at?: string;
           updated_at?: string;
         };

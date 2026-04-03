@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Heart, Plane, MapPin, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { formatPrice } from "@/lib/format";
+import { useTranslation } from "@/components/providers/language-provider";
 
 interface ListingImage {
   image_url: string;
@@ -37,6 +38,7 @@ function getImage(images: ListingImage[]): string | null {
 
 export default function SavedClient({ saved }: { saved: SavedItem[] }) {
   const router = useRouter();
+  const { locale } = useTranslation();
   const [removing, setRemoving] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -153,7 +155,7 @@ export default function SavedClient({ saved }: { saved: SavedItem[] }) {
                     {listing.title}
                   </Link>
                   <p className="text-[#2563EB] font-bold text-base mb-2">
-                    {formatPrice(listing.asking_price, listing.currency)}
+                    {formatPrice(listing.asking_price, listing.currency, locale)}
                   </p>
                   <div className="flex items-center justify-between text-xs text-[#64748B]">
                     <span>{listing.year}</span>

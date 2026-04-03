@@ -9,6 +9,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { fmtVal } from "@/lib/valuation";
 import { useTranslation } from "@/components/providers/language-provider";
+import { fmtNum } from "@/lib/format";
 
 interface Manufacturer { id: string; name: string; }
 interface AircraftModel { id: string; name: string; category: string; manufacturer_id: string; }
@@ -31,7 +32,7 @@ const inputCls =
 
 export default function ValuationClient({ manufacturers }: { manufacturers: Manufacturer[] }) {
   const supabase = createClient();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   const CATEGORIES = [
     { key: "jet", label: t.hero.jets, icon: "✈️" },
@@ -80,8 +81,8 @@ export default function ValuationClient({ manufacturers }: { manufacturers: Manu
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [manufacturerId, category]);
 
-  const totalTimeDisplay = totalTimeRaw ? Number(totalTimeRaw).toLocaleString("en-US") : "";
-  const engineTimeDisplay = engineTimeRaw ? Number(engineTimeRaw).toLocaleString("en-US") : "";
+  const totalTimeDisplay = totalTimeRaw ? fmtNum(Number(totalTimeRaw), locale) : "";
+  const engineTimeDisplay = engineTimeRaw ? fmtNum(Number(engineTimeRaw), locale) : "";
   const selectedModel = models.find((m) => m.id === modelId);
   const canSubmit = category && manufacturerId && year && Number(year) > 1950;
 
@@ -246,9 +247,9 @@ export default function ValuationClient({ manufacturers }: { manufacturers: Manu
               </div>
 
               <div className="grid grid-cols-3 gap-2 mb-4 text-center">
-                <div><p className="text-xs text-[#64748B] mb-0.5">{t.valuation.low}</p><p className="text-xl font-bold text-[#64748B]">{fmtVal(result.low)}</p></div>
-                <div className="border-x border-slate-100"><p className="text-xs text-[#2563EB] font-semibold mb-0.5">{t.valuation.midEst}</p><p className="text-2xl font-bold text-[#0F172A]">{fmtVal(result.mid)}</p></div>
-                <div><p className="text-xs text-[#64748B] mb-0.5">{t.valuation.high}</p><p className="text-xl font-bold text-[#64748B]">{fmtVal(result.high)}</p></div>
+                <div><p className="text-xs text-[#64748B] mb-0.5">{t.valuation.low}</p><p className="text-xl font-bold text-[#64748B]">{fmtVal(result.low, locale)}</p></div>
+                <div className="border-x border-slate-100"><p className="text-xs text-[#2563EB] font-semibold mb-0.5">{t.valuation.midEst}</p><p className="text-2xl font-bold text-[#0F172A]">{fmtVal(result.mid, locale)}</p></div>
+                <div><p className="text-xs text-[#64748B] mb-0.5">{t.valuation.high}</p><p className="text-xl font-bold text-[#64748B]">{fmtVal(result.high, locale)}</p></div>
               </div>
 
               <div className="relative h-5 rounded-full bg-gradient-to-r from-slate-200 via-[#2563EB] to-slate-200 mb-2 overflow-visible">
@@ -257,9 +258,9 @@ export default function ValuationClient({ manufacturers }: { manufacturers: Manu
                 <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-slate-400 border-2 border-white shadow" style={{ right: "0%", transform: "translateY(-50%)" }} />
               </div>
               <div className="flex justify-between text-xs text-[#64748B]">
-                <span>{fmtVal(result.low)}</span>
-                <span className="text-[#2563EB] font-semibold">{fmtVal(result.mid)}</span>
-                <span>{fmtVal(result.high)}</span>
+                <span>{fmtVal(result.low, locale)}</span>
+                <span className="text-[#2563EB] font-semibold">{fmtVal(result.mid, locale)}</span>
+                <span>{fmtVal(result.high, locale)}</span>
               </div>
 
               <div className="flex items-center gap-3 mt-5 pt-5 border-t border-slate-100">
@@ -287,7 +288,7 @@ export default function ValuationClient({ manufacturers }: { manufacturers: Manu
                     const img = l.listing_images?.find((i) => i.is_primary)?.image_url
                       ?? l.listing_images?.sort((a, b) => a.display_order - b.display_order)[0]?.image_url;
                     const sym = l.currency === "BRL" ? "R$" : l.currency === "EUR" ? "€" : "$";
-                    const price = l.asking_price === 0 ? t.valuation.priceOnRequest : `${sym}${l.asking_price.toLocaleString("en-US")}`;
+                    const price = l.asking_price === 0 ? t.valuation.priceOnRequest : `${sym}${fmtNum(l.asking_price, locale)}`;
                     const location = [l.location_city, l.location_country].filter(Boolean).join(", ");
                     return (
                       <Link key={l.id} href={`/listings/${l.id}`} className="block rounded-xl overflow-hidden border border-slate-100 hover:shadow-md transition-shadow">
