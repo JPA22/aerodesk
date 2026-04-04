@@ -43,19 +43,36 @@ export async function POST(request: Request) {
       engine_program,
     });
 
-    // ── 2. Fetch similar active listings (same year window) ────────────────
-    const { data: similar } = await supabase
+    // ── 2. Fetch similar active listings (same model or category + year) ───
+    // First try: same model name
+    let { data: similar } = await supabase
       .from("aircraft_listings")
       .select(
         `id, title, year, asking_price, currency,
          location_city, location_country,
+         aircraft_models!aircraft_model_id(name, category),
          listing_images!listing_id(image_url, is_primary, display_order)`
       )
       .eq("status", "active")
-      .gte("year", year - 6)
-      .lte("year", year + 6)
+      .gte("year", year - 8)
+      .lte("year", year + 8)
       .order("featured", { ascending: false })
-      .limit(3);
+      .limit(6);
+
+    // Filter to same model if possible, else same category
+    const sameModel = (similar ?? []).filter(
+      (l: Record<string, unknown>) => {
+        const am = l.aircraft_models as { name?: string; category?: string } | null;
+        return am?.name === model_name;
+      }
+    );
+    const sameCategory = (similar ?? []).filter(
+      (l: Record<string, unknown>) => {
+        const am = l.aircraft_models as { name?: string; category?: string } | null;
+        return am?.category === category;
+      }
+    );
+    similar = sameModel.length >= 2 ? sameModel.slice(0, 3) : sameCategory.slice(0, 3);
 
     // ── 3. Upgrade confidence if we have real comparisons ─────────────────
     let confidence = result.confidence;
