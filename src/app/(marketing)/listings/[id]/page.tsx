@@ -62,7 +62,7 @@ async function getSimilarListings(id: string, modelId: string, category: string)
     .select(
       `id, title, year, asking_price, currency,
        location_city, location_state, location_country,
-       total_time_hours, engine_program, condition_rating, featured, published_at, refreshed_at,
+       total_time_hours, engine_program, condition_rating, featured, published_at, refreshed_at, dd_tier,
        aircraft_models!aircraft_model_id (id, name, category, manufacturer_id, manufacturers!manufacturer_id (id, name)),
        listing_images!listing_id (image_url, is_primary, display_order)`
     )

@@ -16,10 +16,12 @@ import {
   X,
   Save,
   RefreshCw,
+  FileText,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { formatPrice, fmtNum } from "@/lib/format";
 import { useTranslation } from "@/components/providers/language-provider";
+import { DDBadgeMedium, type DDTier } from "@/components/ui/dd-badge";
 import type { ListingStatus } from "@/types/database";
 
 interface ListingImage {
@@ -39,6 +41,7 @@ interface Listing {
   created_at: string;
   published_at: string | null;
   refreshed_at: string | null;
+  dd_tier: string | null;
   images: ListingImage[];
   sale_price: number | null;
   buyer_name: string | null;
@@ -382,6 +385,7 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                   </th>
                   <th className="text-left px-4 py-3 font-medium text-[#64748B]">Listed</th>
                   <th className="text-left px-4 py-3 font-medium text-[#64748B]">Freshness</th>
+                  <th className="text-left px-4 py-3 font-medium text-[#64748B]">Pre-DD</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -457,7 +461,28 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                           })()}
                         </td>
                         <td className="px-4 py-3">
+                          {listing.dd_tier ? (
+                            <Link href={`/dashboard/listings/${listingId}/documents`}>
+                              <DDBadgeMedium tier={listing.dd_tier as DDTier} />
+                            </Link>
+                          ) : (
+                            <Link
+                              href={`/dashboard/listings/${listingId}/documents`}
+                              className="text-xs text-[#2563EB] hover:underline"
+                            >
+                              {t.dd.manageDocs}
+                            </Link>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
                           <div className="flex items-center gap-1.5 justify-end">
+                            <Link
+                              href={`/dashboard/listings/${listingId}/documents`}
+                              className="p-1.5 text-slate-400 hover:text-[#2563EB] rounded transition-colors"
+                              title={t.dd.manageDocs}
+                            >
+                              <FileText size={14} />
+                            </Link>
                             {listing.status === "active" && (
                               <button
                                 onClick={() => void refreshListing(listingId)}
@@ -544,7 +569,7 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
 
                       {showSaleDetails && (
                         <tr>
-                          <td colSpan={8} className="p-0">
+                          <td colSpan={9} className="p-0">
                             <SaleDetailsPanel
                               listing={listing}
                               onClose={() => setSaleDetailsId(null)}
@@ -604,8 +629,16 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                       <div className="flex gap-4 text-xs text-[#64748B]">
                         <span className="flex items-center gap-1"><Eye size={11} /> {listing.views_count}</span>
                         <span className="flex items-center gap-1"><Users size={11} /> {listing.leads_count}</span>
+                        {listing.dd_tier && (
+                          <Link href={`/dashboard/listings/${listingId}/documents`}>
+                            <DDBadgeMedium tier={listing.dd_tier as DDTier} />
+                          </Link>
+                        )}
                       </div>
                       <div className="flex items-center gap-1">
+                        <Link href={`/dashboard/listings/${listingId}/documents`} className="p-1.5 text-slate-400 hover:text-[#2563EB]" title={t.dd.manageDocs}>
+                          <FileText size={14} />
+                        </Link>
                         {listing.status === "active" && (
                           <button onClick={() => void refreshListing(listingId)} disabled={isLoading} className="p-1.5 text-slate-400 hover:text-emerald-600" title={t.dashboard.refreshListing}>
                             <RefreshCw size={14} />

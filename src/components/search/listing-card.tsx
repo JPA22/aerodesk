@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
 import { formatPrice, fmtNum } from "@/lib/format";
 import { useTranslation } from "@/components/providers/language-provider";
+import { DDBadgeSmall, type DDTier } from "@/components/ui/dd-badge";
 
 // ── Shared type (used by search page + detail page similar listings) ──────────
 
@@ -27,6 +28,7 @@ export type ListingCardData = {
   featured: boolean;
   published_at: string | null;
   refreshed_at: string | null;
+  dd_tier: string | null;
   aircraft_models: {
     name: string;
     category: string;
@@ -198,6 +200,9 @@ export default function ListingCard({
               <span className="bg-slate-100 px-2 py-0.5 rounded-full text-[10px] font-medium">
                 {ENGINE_LABEL[listing.engine_program]}
               </span>
+            )}
+            {listing.dd_tier && (
+              <DDBadgeSmall tier={listing.dd_tier as DDTier} />
             )}
           </div>
 

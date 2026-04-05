@@ -260,6 +260,10 @@ useful_load_lbs?: number | null;
           wifi_equipped: boolean;
           apu_equipped: boolean;
           refreshed_at: string | null;
+          dd_tier: string | null;
+          dd_score: number | null;
+          dd_analysis: Json | null;
+          dd_analyzed_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -300,6 +304,10 @@ useful_load_lbs?: number | null;
           wifi_equipped?: boolean;
           apu_equipped?: boolean;
           refreshed_at?: string | null;
+          dd_tier?: string | null;
+          dd_score?: number | null;
+          dd_analysis?: Json | null;
+          dd_analyzed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -340,6 +348,10 @@ useful_load_lbs?: number | null;
           wifi_equipped?: boolean;
           apu_equipped?: boolean;
           refreshed_at?: string | null;
+          dd_tier?: string | null;
+          dd_score?: number | null;
+          dd_analysis?: Json | null;
+          dd_analyzed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -396,6 +408,45 @@ useful_load_lbs?: number | null;
         Relationships: [
           {
             foreignKeyName: "listing_images_listing_id_fkey";
+            columns: ["listing_id"];
+            isOneToOne: false;
+            referencedRelation: "aircraft_listings";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      listing_documents: {
+        Row: {
+          id: string;
+          listing_id: string;
+          category: string;
+          file_name: string;
+          file_url: string;
+          file_size: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          listing_id: string;
+          category: string;
+          file_name: string;
+          file_url: string;
+          file_size?: number | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          listing_id?: string;
+          category?: string;
+          file_name?: string;
+          file_url?: string;
+          file_size?: number | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "listing_documents_listing_id_fkey";
             columns: ["listing_id"];
             isOneToOne: false;
             referencedRelation: "aircraft_listings";
@@ -554,6 +605,7 @@ export type Manufacturer    = Database["public"]["Tables"]["manufacturers"]["Row
 export type AircraftModel   = Database["public"]["Tables"]["aircraft_models"]["Row"];
 export type AircraftListing = Database["public"]["Tables"]["aircraft_listings"]["Row"];
 export type ListingImage    = Database["public"]["Tables"]["listing_images"]["Row"];
+export type ListingDocument = Database["public"]["Tables"]["listing_documents"]["Row"];
 export type Lead            = Database["public"]["Tables"]["leads"]["Row"];
 export type SavedListing    = Database["public"]["Tables"]["saved_listings"]["Row"];
 export type SearchAlert     = Database["public"]["Tables"]["search_alerts"]["Row"];

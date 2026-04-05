@@ -14,6 +14,7 @@ import { formatPrice, fmtNum } from "@/lib/format";
 import { fmtVal, priceBadge, pricePosition, type ValuationResult } from "@/lib/valuation";
 import { BarChart3 } from "lucide-react";
 import { useTranslation } from "@/components/providers/language-provider";
+import { DDBadgeLarge, type DDTier } from "@/components/ui/dd-badge";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -42,6 +43,8 @@ type ListingDetail = {
   featured: boolean;
   wifi_equipped: boolean;
   apu_equipped: boolean;
+  dd_tier: string | null;
+  dd_score: number | null;
   aircraft_models: {
     id: string;
     name: string;
@@ -670,6 +673,16 @@ export default function ListingDetailClient({
                 modelName={model.name}
                 category={model.category}
               />
+
+              {/* Pre-DD Badge */}
+              {listing.dd_tier && (
+                <div className="mb-6">
+                  <DDBadgeLarge
+                    tier={listing.dd_tier as DDTier}
+                    score={listing.dd_score}
+                  />
+                </div>
+              )}
 
               {/* CTA buttons */}
               <div className="space-y-3">
