@@ -10,7 +10,7 @@ export default async function DashboardListingsPage() {
   const { data: listings } = await supabase
     .from("aircraft_listings")
     .select(
-      `id, title, asking_price, currency, status, views_count, created_at,
+      `id, title, asking_price, currency, status, views_count, created_at, published_at, refreshed_at,
        sale_price, buyer_name, buyer_email, buyer_phone, sale_notes, sold_at,
        images:listing_images(image_url, is_primary, display_order)`
     )

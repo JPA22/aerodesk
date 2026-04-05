@@ -349,6 +349,18 @@ lang: { code: "en", label: "English", flag: "🇺🇸" },
     no: "No",
     // Equipment
     equipment: "Equipment",
+    // Freshness badges
+    fresh: "Fresh",
+    days30: "30+ days",
+    days60: "60+ days",
+  },
+
+  // Dashboard
+  dashboard: {
+    refreshListing: "Refresh",
+    refreshConfirm: "Refresh this listing? It will be marked as freshly updated for buyers.",
+    refreshed: "Listing refreshed!",
+    expiredNotice: "This listing was auto-expired after 90 days. Reactivate or refresh it to make it visible again.",
   },
 
   // Common

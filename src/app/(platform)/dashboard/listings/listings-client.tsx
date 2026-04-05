@@ -15,6 +15,7 @@ import {
   ClipboardList,
   X,
   Save,
+  RefreshCw,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { formatPrice, fmtNum } from "@/lib/format";
@@ -36,6 +37,8 @@ interface Listing {
   views_count: number;
   leads_count: number;
   created_at: string;
+  published_at: string | null;
+  refreshed_at: string | null;
   images: ListingImage[];
   sale_price: number | null;
   buyer_name: string | null;
@@ -201,7 +204,7 @@ function SaleDetailsPanel({ listing, onClose, onRefresh }: SaleDetailsProps) {
 
 export default function ListingsClient({ listings }: { listings: Listing[] }) {
   const router = useRouter();
-  const { locale } = useTranslation();
+  const { t, locale } = useTranslation();
   const [tab, setTab] = useState<Tab>("all");
   const [, startTransition] = useTransition();
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -241,9 +244,13 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
     if (confirmMsg && !window.confirm(confirmMsg)) return;
     setLoadingId(listingId);
 
-    const payload: { status: ListingStatus; published_at?: string; sold_at?: string } = { status };
-    if (status === "active") payload.published_at = new Date().toISOString();
-    if (status === "sold") payload.sold_at = new Date().toISOString();
+    const now = new Date().toISOString();
+    const payload: { status: ListingStatus; published_at?: string; sold_at?: string; refreshed_at?: string } = { status };
+    if (status === "active") {
+      payload.published_at = now;
+      payload.refreshed_at = now;
+    }
+    if (status === "sold") payload.sold_at = now;
 
     const supabase = createClient();
     const { error } = await supabase
@@ -255,6 +262,26 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
 
     if (error) {
       alert(`Update failed: ${error.message} (code: ${error.code})`);
+      return;
+    }
+
+    refresh();
+  }
+
+  async function refreshListing(listingId: string) {
+    if (!window.confirm(t.dashboard.refreshConfirm)) return;
+    setLoadingId(listingId);
+
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("aircraft_listings")
+      .update({ refreshed_at: new Date().toISOString() })
+      .eq("id", listingId);
+
+    setLoadingId(null);
+
+    if (error) {
+      alert(`Refresh failed: ${error.message} (code: ${error.code})`);
       return;
     }
 
@@ -354,6 +381,7 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                     <div className="flex items-center gap-1"><Users size={12} /> Leads</div>
                   </th>
                   <th className="text-left px-4 py-3 font-medium text-[#64748B]">Listed</th>
+                  <th className="text-left px-4 py-3 font-medium text-[#64748B]">Freshness</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -407,7 +435,39 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                           {new Date(listing.created_at).toLocaleDateString("pt-BR")}
                         </td>
                         <td className="px-4 py-3">
+                          {(() => {
+                            const ref = listing.refreshed_at ?? listing.published_at;
+                            if (!ref) return <span className="text-[#64748B] text-xs">—</span>;
+                            const days = Math.floor((Date.now() - new Date(ref).getTime()) / 86_400_000);
+                            const badge =
+                              days <= 14
+                                ? { label: t.listing.fresh, cls: "bg-emerald-100 text-emerald-700" }
+                                : days >= 60
+                                  ? { label: t.listing.days60, cls: "bg-red-100 text-red-600" }
+                                  : days >= 30
+                                    ? { label: t.listing.days30, cls: "bg-amber-100 text-amber-700" }
+                                    : null;
+                            return badge ? (
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${badge.cls}`}>
+                                {badge.label}
+                              </span>
+                            ) : (
+                              <span className="text-[#64748B] text-xs">{days}d</span>
+                            );
+                          })()}
+                        </td>
+                        <td className="px-4 py-3">
                           <div className="flex items-center gap-1.5 justify-end">
+                            {listing.status === "active" && (
+                              <button
+                                onClick={() => void refreshListing(listingId)}
+                                disabled={isLoading}
+                                className="p-1.5 text-slate-400 hover:text-emerald-600 rounded transition-colors"
+                                title={t.dashboard.refreshListing}
+                              >
+                                <RefreshCw size={14} />
+                              </button>
+                            )}
                             <Link
                               href={`/listings/new?edit=${listingId}`}
                               className="p-1.5 text-slate-400 hover:text-[#2563EB] rounded transition-colors"
@@ -484,7 +544,7 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
 
                       {showSaleDetails && (
                         <tr>
-                          <td colSpan={7} className="p-0">
+                          <td colSpan={8} className="p-0">
                             <SaleDetailsPanel
                               listing={listing}
                               onClose={() => setSaleDetailsId(null)}
@@ -546,6 +606,11 @@ export default function ListingsClient({ listings }: { listings: Listing[] }) {
                         <span className="flex items-center gap-1"><Users size={11} /> {listing.leads_count}</span>
                       </div>
                       <div className="flex items-center gap-1">
+                        {listing.status === "active" && (
+                          <button onClick={() => void refreshListing(listingId)} disabled={isLoading} className="p-1.5 text-slate-400 hover:text-emerald-600" title={t.dashboard.refreshListing}>
+                            <RefreshCw size={14} />
+                          </button>
+                        )}
                         <Link href={`/listings/new?edit=${listingId}`} className="p-1.5 text-slate-400 hover:text-[#2563EB]" title="Edit">
                           <Pencil size={14} />
                         </Link>

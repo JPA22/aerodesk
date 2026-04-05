@@ -465,7 +465,7 @@ function SearchContent() {
         .select(
           `id, title, year, asking_price, currency,
            location_city, location_state, location_country,
-           total_time_hours, engine_program, condition_rating, featured, published_at,
+           total_time_hours, engine_program, condition_rating, featured, published_at, refreshed_at,
            aircraft_models!aircraft_model_id (
              id, name, category, manufacturer_id,
              manufacturers!manufacturer_id (id, name)

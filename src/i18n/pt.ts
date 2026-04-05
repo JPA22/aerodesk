@@ -328,6 +328,18 @@ const pt: TranslationKeys = {
     yes: "Sim",
     no: "Não",
     equipment: "Equipamentos",
+    // Freshness badges
+    fresh: "Recente",
+    days30: "30+ dias",
+    days60: "60+ dias",
+  },
+
+  // Dashboard
+  dashboard: {
+    refreshListing: "Atualizar",
+    refreshConfirm: "Atualizar este anúncio? Ele será marcado como atualizado recentemente para compradores.",
+    refreshed: "Anúncio atualizado!",
+    expiredNotice: "Este anúncio expirou automaticamente após 90 dias. Reative ou atualize para torná-lo visível novamente.",
   },
 
   common: {

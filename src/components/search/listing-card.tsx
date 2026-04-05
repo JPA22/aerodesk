@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MapPin, Clock, Heart, Star } from "lucide-react";
+import { MapPin, Clock, Heart, Star, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -25,6 +25,8 @@ export type ListingCardData = {
   engine_program: string;
   condition_rating: number | null;
   featured: boolean;
+  published_at: string | null;
+  refreshed_at: string | null;
   aircraft_models: {
     name: string;
     category: string;
@@ -35,6 +37,26 @@ export type ListingCardData = {
     is_primary: boolean;
     display_order: number;
   }>;
+};
+
+// ── Freshness helpers ────────────────────────────────────────────────────────
+
+type FreshnessTier = "fresh" | "days30" | "days60" | null;
+
+function getFreshness(refreshedAt: string | null, publishedAt: string | null): FreshnessTier {
+  const ref = refreshedAt ?? publishedAt;
+  if (!ref) return null;
+  const days = Math.floor((Date.now() - new Date(ref).getTime()) / 86_400_000);
+  if (days <= 14) return "fresh";
+  if (days >= 60) return "days60";
+  if (days >= 30) return "days30";
+  return null; // 15-29 days — no badge
+}
+
+const FRESHNESS_STYLE: Record<string, { cls: string }> = {
+  fresh: { cls: "bg-emerald-500 text-white" },
+  days30: { cls: "bg-amber-400 text-amber-900" },
+  days60: { cls: "bg-red-400 text-white" },
 };
 
 const ENGINE_LABEL: Record<string, string> = {
@@ -68,9 +90,11 @@ export default function ListingCard({
   const { user } = useAuth();
   const router = useRouter();
   const supabase = createClient();
-  const { locale } = useTranslation();
+  const { t, locale } = useTranslation();
   const [saving, setSaving] = useState(false);
   const isSaved = savedIds.has(listing.id);
+
+  const freshness = getFreshness(listing.refreshed_at, listing.published_at);
 
   const primaryImage =
     listing.listing_images.find((i) => i.is_primary)?.image_url ??
@@ -130,6 +154,13 @@ export default function ListingCard({
           {listing.featured && (
             <span className="absolute top-2.5 left-2.5 bg-[#2563EB] text-white text-xs font-bold px-2.5 py-1 rounded-md flex items-center gap-1">
               <Star size={10} className="fill-white" /> Featured
+            </span>
+          )}
+          {/* Freshness badge */}
+          {freshness && (
+            <span className={`absolute ${listing.featured ? "top-10" : "top-2.5"} left-2.5 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${FRESHNESS_STYLE[freshness].cls}`}>
+              {freshness === "fresh" && <Sparkles size={9} />}
+              {t.listing[freshness]}
             </span>
           )}
           {/* Save button */}
